@@ -74,11 +74,28 @@
       }
     },
     {
-      "label": "Quarto: Render HTML Report",
+      "label": "Quarto: Render Static Report",
       "type": "shell",
       "command": "quarto",
       "args": ["render", "${workspaceFolder}/reports/quarto/summary.qmd"],
       "group": "build"
+    },
+    {
+      "label": "Quarto: Render Interactive Report",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-c",
+        "import shutil, subprocess, pathlib; subprocess.run(['quarto', 'render', 'reports/quarto/interactive_summary.qmd'], check=True); src = pathlib.Path('reports/quarto/interactive_summary.html'); dst = pathlib.Path('outputs/private/interactive_summary.html'); dst.parent.mkdir(parents=True, exist_ok=True); shutil.move(str(src), str(dst)) if src.exists() else None"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "Quarto: Preview Local Report (127.0.0.1)",
+      "type": "shell",
+      "command": "python",
+      "args": ["-m", "http.server", "8000", "--bind", "127.0.0.1", "--directory", "${workspaceFolder}/outputs/private"],
+      "isBackground": true
     },
     {
       "label": "Slidev: Start Dev Server",

@@ -7,7 +7,8 @@
     "slides:dev": "slidev reports/slidev/slides.md",
     "slides:build": "slidev build reports/slidev/slides.md",
     "slides:export": "slidev export reports/slidev/slides.md --output outputs/private/slides.pdf",
-    "report:pptx": "ts-node src/typescript/sample_report.ts"
+    "report:interactive": "python -c \"import shutil, subprocess, pathlib; subprocess.run(['quarto', 'render', 'reports/quarto/interactive_summary.qmd'], check=True); src=pathlib.Path('reports/quarto/interactive_summary.html'); dst=pathlib.Path('outputs/private/interactive_summary.html'); dst.parent.mkdir(parents=True, exist_ok=True); shutil.move(str(src), str(dst)) if src.exists() else None\"",
+    "report:preview": "python -m http.server 8000 --bind 127.0.0.1 --directory outputs/private"
   },
   "dependencies": {
     "pptxgenjs": "^3.12.0"

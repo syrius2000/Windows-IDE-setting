@@ -20,6 +20,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import shutil
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -445,6 +446,363 @@ class TestOcrPipelineExecution(unittest.TestCase):
                     queue_items = json.load(f)
                 self.assertEqual(len(queue_items), 1)
                 self.assertEqual(queue_items[0]["review_status"], "pending")
+
+
+class TestInteractiveQuartoReporting(unittest.TestCase):
+    """Tests for offline interactive Quarto reporting, disclosure control, and HTML leak detection."""
+
+    def test_interactive_template_exists_and_configured(self):
+        qmd_file = PLATFORM_ROOT / "templates" / "analysis-project" / "template" / "reports" / "quarto" / "interactive_summary.qmd"
+        self.assertTrue(qmd_file.exists(), "interactive_summary.qmd template must exist")
+        content = qmd_file.read_text(encoding="utf-8")
+        self.assertIn("embed-resources: true", content, "Template must configure embed-resources: true for self-contained HTML")
+        self.assertNotIn("https://cdn.jsdelivr.net", content, "Template must not contain CDN references")
+        self.assertNotIn("https://unpkg.com", content, "Template must not contain unpkg references")
+        self.assertNotIn("observableusercontent.com", content, "Template must not contain Observable CDN references")
+        self.assertNotIn("duckdb-wasm", content, "Template must not depend on external DuckDB-WASM")
+
+    def test_small_cell_suppression_logic_suppresses_all_metrics(self):
+        sample_pipeline = load_module(
+            "sample_pipeline",
+            PLATFORM_ROOT / "templates" / "analysis-project" / "template" / "src" / "python" / "sample_rwd_pipeline.py"
+        )
+        records = [
+            {
+                "treatment_arm": "Active",
+                "sex": "M",
+                "period": "<1年 (365日未満)",
+                "age_group": "<55",
+                "n_patients": 3,
+                "n_events": 1,
+                "event_rate": 33.3,
+                "mean_followup": 450.0,
+            },
+            {
+                "treatment_arm": "Active",
+                "sex": "F",
+                "period": "1年以上 (365日以上)",
+                "age_group": "55-69",
+                "n_patients": 12,
+                "n_events": 4,
+                "event_rate": 33.3,
+                "mean_followup": 395.0,
+            },
+        ]
+        sanitized = sample_pipeline.suppress_small_cells(records, threshold=5)
+        # Suppressed row (count < 5): ALL metrics must be None
+        self.assertIsNone(sanitized[0]["n_patients"], "n_patients for count < 5 must be None")
+        self.assertIsNone(sanitized[0]["n_events"], "n_events for count < 5 must be None")
+        self.assertIsNone(sanitized[0]["event_rate"], "event_rate for count < 5 must be None")
+        self.assertIsNone(sanitized[0]["mean_followup"], "mean_followup for count < 5 must be None")
+        self.assertTrue(sanitized[0]["suppressed"], "suppressed flag must be True")
+        # Dimensions must be preserved
+        self.assertEqual(sanitized[0]["treatment_arm"], "Active")
+        self.assertEqual(sanitized[0]["sex"], "M")
+        self.assertEqual(sanitized[0]["period"], "<1年 (365日未満)")
+        self.assertEqual(sanitized[0]["age_group"], "<55")
+
+        # Preserved row (count >= 5)
+        self.assertEqual(sanitized[1]["n_patients"], 12)
+        self.assertEqual(sanitized[1]["n_events"], 4)
+        self.assertEqual(sanitized[1]["event_rate"], 33.3)
+        self.assertEqual(sanitized[1]["mean_followup"], 395.0)
+        self.assertFalse(sanitized[1]["suppressed"])
+
+    def test_validate_project_catches_all_leak_patterns(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            proj_dir = Path(tmpdir)
+            outputs_dir = proj_dir / "outputs" / "private"
+            outputs_dir.mkdir(parents=True, exist_ok=True)
+            quarto_dir = proj_dir / "reports" / "quarto"
+            quarto_dir.mkdir(parents=True, exist_ok=True)
+
+            # Test 1: CDN strings in HTML
+            cdn_html = outputs_dir / "cdn_leak.html"
+            cdn_html.write_text('<html><script>const url = "https://cdn.jsdelivr.net/npm/d3";</script></html>', encoding="utf-8")
+            errors = validate_project.check_interactive_reports(proj_dir)
+            self.assertTrue(any("jsdelivr CDN dependency" in e for e in errors))
+            cdn_html.unlink()
+
+            # Test 2: fetch() network call
+            fetch_html = outputs_dir / "fetch_leak.html"
+            fetch_html.write_text('<html><script>fetch("https://api.example.com/data");</script></html>', encoding="utf-8")
+            errors = validate_project.check_interactive_reports(proj_dir)
+            self.assertTrue(any("fetch() network request" in e for e in errors))
+            fetch_html.unlink()
+
+            # Test 3: dynamic import()
+            import_html = outputs_dir / "import_leak.html"
+            import_html.write_text('<html><script>import("https://unpkg.com/some-pkg");</script></html>', encoding="utf-8")
+            errors = validate_project.check_interactive_reports(proj_dir)
+            self.assertTrue(any("Dynamic import() remote module request" in e or "unpkg CDN dependency" in e for e in errors))
+            import_html.unlink()
+
+            # Test 4: remote Worker
+            worker_html = outputs_dir / "worker_leak.html"
+            worker_html.write_text('<html><script>new Worker("https://cdn.observableusercontent.com/worker.js");</script></html>', encoding="utf-8")
+            errors = validate_project.check_interactive_reports(proj_dir)
+            self.assertTrue(any("Remote Web Worker dependency" in e or "Observable" in e for e in errors))
+            worker_html.unlink()
+
+            # Test 5: Patient identifiers
+            patient_id_html = outputs_dir / "patient_leak.html"
+            patient_id_html.write_text('<html><body><script>const d = [{"patient_id": "SYNTH_0042"}];</script></body></html>', encoding="utf-8")
+            errors = validate_project.check_interactive_reports(proj_dir)
+            self.assertTrue(any("Individual-level patient identifiers" in e for e in errors))
+            patient_id_html.unlink()
+
+            # Test 6: HTML / data improperly placed in reports/quarto/
+            improper_html = quarto_dir / "interactive_summary.html"
+            improper_html.write_text('<html><body>Report</body></html>', encoding="utf-8")
+            errors = validate_project.check_interactive_reports(proj_dir)
+            self.assertTrue(any("Generated HTML artifact found in reports/quarto/" in e for e in errors))
+            improper_html.unlink()
+
+    def test_clean_html_passes_validation(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            proj_dir = Path(tmpdir)
+            outputs_dir = proj_dir / "outputs" / "private"
+            outputs_dir.mkdir(parents=True, exist_ok=True)
+            clean_html = outputs_dir / "clean_report.html"
+            clean_html.write_text(
+                '<html><head><style>body { font-family: sans-serif; }</style></head>'
+                '<body><h1>Self Contained Report</h1><svg width="100" height="100"></svg>'
+                '<script>console.log("Local execution only");</script></body></html>',
+                encoding="utf-8"
+            )
+
+            errors = validate_project.check_interactive_reports(proj_dir)
+            self.assertEqual(len(errors), 0, "Clean self-contained HTML in outputs/private must pass validation")
+
+    def test_quarto_end_to_end_render_and_zero_network_verification(self):
+        """End-to-end verification: render interactive_summary.qmd and verify zero external network requests."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            proj_dir = Path(tmpdir)
+            # Setup Case Project structure
+            (proj_dir / "reports" / "quarto").mkdir(parents=True, exist_ok=True)
+            (proj_dir / "outputs" / "private").mkdir(parents=True, exist_ok=True)
+            (proj_dir / "outputs" / "release").mkdir(parents=True, exist_ok=True)
+            (proj_dir / "data" / "synthetic").mkdir(parents=True, exist_ok=True)
+            (proj_dir / "src" / "python").mkdir(parents=True, exist_ok=True)
+            (proj_dir / "sql").mkdir(parents=True, exist_ok=True)
+
+            # Copy qmd template and pipeline
+            qmd_src = PLATFORM_ROOT / "templates" / "analysis-project" / "template" / "reports" / "quarto" / "interactive_summary.qmd"
+            pipeline_src = PLATFORM_ROOT / "templates" / "analysis-project" / "template" / "src" / "python" / "sample_rwd_pipeline.py"
+            shutil.copy(qmd_src, proj_dir / "reports" / "quarto" / "interactive_summary.qmd")
+            shutil.copy(pipeline_src, proj_dir / "src" / "python" / "sample_rwd_pipeline.py")
+
+            # Run pipeline to generate aggregated JSON in outputs/private
+            pipeline_module = load_module("e2e_pipeline", proj_dir / "src" / "python" / "sample_rwd_pipeline.py")
+            pipeline_module.run_pipeline()
+
+            private_json = proj_dir / "outputs" / "private" / "interactive_cohort_summary.json"
+            self.assertTrue(private_json.exists(), "Pipeline must generate outputs/private/interactive_cohort_summary.json")
+
+            # Setup isolated sandbox environment variables for Quarto/Jupyter logs and cache
+            quarto_env = os.environ.copy()
+            quarto_env["QUARTO_DATA_DIR"] = str(proj_dir / ".quarto_data")
+            quarto_env["QUARTO_CACHE_DIR"] = str(proj_dir / ".quarto_cache")
+            quarto_env["XDG_DATA_HOME"] = str(proj_dir / ".xdg_data")
+            quarto_env["XDG_CACHE_HOME"] = str(proj_dir / ".xdg_cache")
+            quarto_env["XDG_STATE_HOME"] = str(proj_dir / ".xdg_state")
+            quarto_env["XDG_CONFIG_HOME"] = str(proj_dir / ".xdg_config")
+
+            # Render Quarto report
+            qmd_target = proj_dir / "reports" / "quarto" / "interactive_summary.qmd"
+            res = subprocess.run(
+                ["quarto", "render", str(qmd_target)],
+                cwd=str(proj_dir),
+                env=quarto_env,
+                capture_output=True,
+                text=True
+            )
+            self.assertEqual(res.returncode, 0, f"Quarto render failed: {res.stderr}\nStdout: {res.stdout}")
+
+            # Move to outputs/private/interactive_summary.html
+            rendered_temp = proj_dir / "reports" / "quarto" / "interactive_summary.html"
+            rendered_final = proj_dir / "outputs" / "private" / "interactive_summary.html"
+            self.assertTrue(rendered_temp.exists(), "Quarto must generate HTML")
+            shutil.move(str(rendered_temp), str(rendered_final))
+
+            # Inspect rendered HTML content
+            html_content = rendered_final.read_text(encoding="utf-8")
+            self.assertIn("offline-cohort-data", html_content, "Must contain embedded JSON script")
+            self.assertIn("rwd-chart", html_content, "Must contain SVG chart container")
+            self.assertIn("data-table", html_content, "Must contain data table container")
+
+            # Check zero external network leaks
+            import re
+            # Check for active network dependencies
+            network_leaks = re.findall(
+                r"(?:src|href)\s*=\s*[\"']https?://(?!www\.w3\.org)[^\s\"']+|fetch\s*\(\s*[\"'`]https?:|import\s*\(\s*[\"'`]https?:|cdn\.jsdelivr|unpkg\.com|observableusercontent",
+                html_content,
+                re.IGNORECASE
+            )
+            self.assertEqual(len(network_leaks), 0, f"External network dependencies detected in rendered HTML: {network_leaks}")
+
+            # Run validate-project check
+            errors = validate_project.check_interactive_reports(proj_dir)
+            self.assertEqual(len(errors), 0, f"Validation errors on rendered report: {errors}")
+
+    def test_browser_headless_dom_and_filter_interaction(self):
+        """Launches headless Chrome/Edge on file:// URL to verify offline rendering and dynamic filter interactions."""
+        import asyncio
+        import socket
+        import urllib.request
+        import websockets
+
+        chrome_candidates = [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+            "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+            "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+            "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+            "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+            "google-chrome",
+            "chromium",
+            "msedge"
+        ]
+        chrome_bin = None
+        for cand in chrome_candidates:
+            if shutil.which(cand) or Path(cand).exists():
+                chrome_bin = cand
+                break
+
+        if not chrome_bin:
+            self.skipTest("No supported browser (Chrome/Edge) found for headless CDP verification.")
+
+        html_path = PLATFORM_ROOT / "templates" / "analysis-project" / "template" / "outputs" / "private" / "interactive_summary.html"
+        if not html_path.exists():
+            self.skipTest("interactive_summary.html not yet rendered in template directory.")
+
+        # Dynamically find a free port
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            free_port = s.getsockname()[1]
+
+        async def run_cdp_test():
+            user_data_dir = tempfile.mkdtemp()
+            proc = subprocess.Popen([
+                chrome_bin,
+                "--headless=new",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-software-rasterizer",
+                "--no-first-run",
+                "--no-default-browser-check",
+                f"--remote-debugging-port={free_port}",
+                f"--user-data-dir={user_data_dir}",
+                f"file://{html_path.resolve()}"
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            # Poll until CDP endpoint is ready (up to 10 seconds)
+            targets = None
+            for _ in range(50):
+                await asyncio.sleep(0.2)
+                try:
+                    with urllib.request.urlopen(f"http://127.0.0.1:{free_port}/json", timeout=1) as response:
+                        targets = json.loads(response.read().decode())
+                        if targets:
+                            break
+                except Exception:
+                    pass
+
+            if not targets:
+                stdout_err = ""
+                try:
+                    proc.terminate()
+                    out, err = proc.communicate(timeout=2)
+                    stdout_err = f"Stdout: {out.decode(errors='ignore')}\nStderr: {err.decode(errors='ignore')}"
+                except Exception:
+                    pass
+                self.fail(f"CDP failed to start on port {free_port}.\n{stdout_err}")
+
+            try:
+                target = next(t for t in targets if "interactive_summary.html" in t.get("url", ""))
+                ws_url = target["webSocketDebuggerUrl"]
+
+                async with websockets.connect(ws_url, max_size=10 * 1024 * 1024) as ws:
+                    # Wait until DOM and scripts are fully loaded
+                    val = {}
+                    for _ in range(50):
+                        eval_check = {
+                            "id": 99,
+                            "method": "Runtime.evaluate",
+                            "params": {
+                                "expression": 'JSON.stringify({ readyState: document.readyState, title: document.title, rows: document.querySelectorAll("#table-body tr").length, totalPts: document.getElementById("stat-total-pts") ? document.getElementById("stat-total-pts").textContent : null })'
+                            }
+                        }
+                        await ws.send(json.dumps(eval_check))
+                        while True:
+                            msg = json.loads(await ws.recv())
+                            if msg.get("id") == 99:
+                                val = json.loads(msg.get("result", {}).get("result", {}).get("value", "{}"))
+                                break
+                        if val.get("readyState") == "complete" and val.get("title") and val.get("rows", 0) > 0:
+                            break
+                        await asyncio.sleep(0.1)
+
+                    # 1. Verify initial render
+                    self.assertIn("RWD コホート", val.get("title", ""))
+                    self.assertGreater(val.get("rows", 0), 0, "Table rows must be rendered on initial load")
+                    self.assertIsNotNone(val.get("totalPts"))
+
+                    # 2. Verify filter interaction: Arm + Sex + Period
+                    eval_filter = {
+                        "id": 2,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": '''
+                                const armSelect = document.getElementById("filter-arm");
+                                const sexSelect = document.getElementById("filter-sex");
+                                const periodSelect = document.getElementById("filter-period");
+                                armSelect.value = "Active";
+                                armSelect.dispatchEvent(new Event("change"));
+                                const resArm = {
+                                    selectedArm: armSelect.value,
+                                    rows: document.querySelectorAll("#table-body tr").length,
+                                    svgBars: document.querySelectorAll("#rwd-chart rect").length
+                                };
+                                // Filter by period if available
+                                if (periodSelect.options.length > 1) {
+                                    periodSelect.selectedIndex = 1;
+                                    periodSelect.dispatchEvent(new Event("change"));
+                                }
+                                JSON.stringify({
+                                    selectedArm: armSelect.value,
+                                    selectedPeriod: periodSelect.value,
+                                    rows: document.querySelectorAll("#table-body tr").length,
+                                    svgBars: document.querySelectorAll("#rwd-chart rect").length
+                                });
+                            '''
+                        }
+                    }
+                    await ws.send(json.dumps(eval_filter))
+                    while True:
+                        msg = json.loads(await ws.recv())
+                        if msg.get("id") == 2:
+                            val = json.loads(msg.get("result", {}).get("result", {}).get("value"))
+                            self.assertEqual(val["selectedArm"], "Active")
+                            self.assertGreater(val["rows"], 0, "Filtered rows must exist")
+                            self.assertGreater(val["svgBars"], 0, "Filtered SVG bars must exist")
+                            break
+            finally:
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=3)
+                except Exception:
+                    proc.kill()
+                    proc.wait(timeout=3)
+                finally:
+                    if proc.stdout:
+                        proc.stdout.close()
+                    if proc.stderr:
+                        proc.stderr.close()
+
+        asyncio.run(run_cdp_test())
 
 
 class TestPowerShellScriptStaticIntegrity(unittest.TestCase):

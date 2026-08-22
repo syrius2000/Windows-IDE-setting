@@ -10,6 +10,8 @@
 
 > 💡 **SASをお持ちでない方へ**: 本基盤は **SASが未導入のPCでも、Python 3.12 / R 4.4 / DuckDB / Quarto による最新の解析環境を100%利用可能** です。
 
+> 🧭 **GitHubアカウントをお持ちでない方へ**: 初期セットアップとローカルのCase Project作成には、GitHubアカウントは必要ありません。まずは配布されたZIPを展開し、PC内で解析を始められます。GitHubは、共同作業やバックアップが必要になった段階で追加すれば十分です。
+
 ---
 
 ## 🏛️ 3層アーキテクチャ
@@ -79,6 +81,8 @@ graph TD
 ### ③ 【日常の解析を行う方】解析実行・報告書作成・運用
 - 📖 [初心者向けチートシート](docs/beginner-cheatsheet.md): 4大ディレクトリ配置と解析実行コマンド
 - 🛠️ [日常運用マニュアル](docs/daily-operations.md): Python/R標準フロー、SASログ確認、成果物承認公開
+- 🌱 [Git基本ワークフロー](docs/git-basic-workflow.md): GitHubなしのローカル運用から、将来のpush・pullまで
+- 🤖 [Cursor AIプロンプトレシピ集](docs/ai-prompt-recipes.md): 統計・RWD初心者向けの安全なコピペ用依頼文
 
 ---
 
@@ -112,6 +116,16 @@ python3 ./scripts/macos/test-odbc.py --dsn rwd_research_db
 - 🔒 [MySQL 8.0 読取専用・ODBC接続基準](docs/mysql-readonly.md)
 - 🛡️ [AI データ境界マトリクス](docs/ai-data-boundary.md)
 - 🚨 [インシデント対応手順書](docs/incident-response.md)
+
+### GitHubを使い始めるタイミング
+
+GitHubアカウントがない場合は、Case Project作成時に作られたローカルGitリポジトリで、変更履歴の保存と復元ができます。次のような状況になったら、GitHubなどの共有先を追加してください。
+
+- 共同研究者と同じコードを共有したい
+- PC故障に備えてリモートにバックアップしたい
+- Pull Requestでレビューを受けたい
+
+GitHubを使わない期間は、`commit`までで作業を完結できます。GitHubを使う場合の`push`・`pull`の順序は、[Git基本ワークフロー](docs/git-basic-workflow.md)を参照してください。
 
 ---
 

@@ -193,6 +193,76 @@ def check_encoding_recursive(project_dir: Path) -> List[str]:
     return errors
 
 
+def check_interactive_reports(project_dir: Path) -> List[str]:
+    """Inspects rendered Quarto HTML and interactive templates for external CDN/network leaks,
+    unauthorized output locations, and unmasked patient identifiers.
+    """
+    import re
+    errors = []
+
+    # 1. Prohibit generated HTML and data artifacts directly in reports/quarto/ (must be in outputs/private/ or outputs/release/)
+    quarto_reports_dir = project_dir / "reports" / "quarto"
+    if quarto_reports_dir.exists():
+        for artifact in quarto_reports_dir.glob("*.html"):
+            errors.append(
+                f"Generated HTML artifact found in reports/quarto/: {artifact.relative_to(project_dir)}. "
+                "Interactive HTML reports must be placed in outputs/private/ or outputs/release/."
+            )
+        for data_artifact in quarto_reports_dir.glob("*.json"):
+            errors.append(
+                f"Data payload found in reports/quarto/: {data_artifact.relative_to(project_dir)}. "
+                "Aggregated data payloads must reside in outputs/private/ or outputs/release/."
+            )
+
+    # 2. Check all generated HTML reports across outputs/ and reports/
+    html_files = list(project_dir.glob("outputs/**/*.html")) + list(project_dir.glob("reports/**/*.html"))
+    
+    # Blocked external domains and URL patterns
+    prohibited_cdn_patterns = [
+        (re.compile(r"cdn\.jsdelivr\.net", re.IGNORECASE), "jsdelivr CDN dependency"),
+        (re.compile(r"unpkg\.com", re.IGNORECASE), "unpkg CDN dependency"),
+        (re.compile(r"cdn\.observableusercontent\.com", re.IGNORECASE), "Observable CDN asset dependency"),
+        (re.compile(r"static\.observableusercontent\.com", re.IGNORECASE), "Observable static file/WASM dependency"),
+        (re.compile(r"api\.observablehq\.com", re.IGNORECASE), "Observable API dependency"),
+        (re.compile(r"cdnjs\.cloudflare\.com", re.IGNORECASE), "cdnjs CDN dependency"),
+        (re.compile(r"raw\.githubusercontent\.com", re.IGNORECASE), "Raw GitHub asset dependency"),
+    ]
+
+    # Blocked JavaScript dynamic network patterns
+    js_network_patterns = [
+        (re.compile(r"<\s*(?:script|link|img|iframe|video|audio)[^>]+(?:src|href)\s*=\s*[\"'](?:https?:|//)", re.IGNORECASE), "Active remote resource tag"),
+        (re.compile(r"\bfetch\s*\(\s*[\"'`](?:https?:|//)", re.IGNORECASE), "fetch() network request"),
+        (re.compile(r"\bimport\s*\(\s*[\"'`](?:https?:|//)", re.IGNORECASE), "Dynamic import() remote module request"),
+        (re.compile(r"\bimport\s+[^;]+\s+from\s+[\"'`](?:https?:|//)", re.IGNORECASE), "Static import from remote URL"),
+        (re.compile(r"\bnew\s+Worker\s*\(\s*[\"'`](?:https?:|//)", re.IGNORECASE), "Remote Web Worker dependency"),
+        (re.compile(r"\.open\s*\(\s*[\"'`][A-Z]+[\"'`]\s*,\s*[\"'`](?:https?:|//)", re.IGNORECASE), "XMLHttpRequest remote request"),
+    ]
+
+    for html_file in html_files:
+        try:
+            content = html_file.read_text(encoding="utf-8")
+            lower_content = content.lower()
+
+            # Check prohibited CDN patterns
+            for pat, desc in prohibited_cdn_patterns:
+                if pat.search(content):
+                    errors.append(f"{desc} detected in HTML report: {html_file.relative_to(project_dir)}")
+
+            # Check JS network patterns
+            for pat, desc in js_network_patterns:
+                if pat.search(content):
+                    errors.append(f"{desc} detected in HTML report: {html_file.relative_to(project_dir)}")
+
+            # Check for leaked unmasked patient IDs or small-cell suppression failures
+            if "patient_id" in lower_content or re.search(r"synth_\d{4}", lower_content):
+                errors.append(f"Individual-level patient identifiers detected in HTML report: {html_file.relative_to(project_dir)}")
+
+        except Exception as e:
+            errors.append(f"Failed to inspect HTML report {html_file.relative_to(project_dir)}: {e}")
+
+    return errors
+
+
 def check_release_manifest(project_dir: Path) -> List[str]:
     errors = []
     release_dir = project_dir / "outputs" / "release"
@@ -292,6 +362,14 @@ def run_validation(project_dir: Path, schema_path: Path) -> Dict[str, Any]:
         checks_results.append({"id": "release_manifest", "status": "FAIL", "errors": release_errors})
     else:
         checks_results.append({"id": "release_manifest", "status": "PASS"})
+
+    # Check 8: Interactive HTML reports self-containment & privacy
+    report_errors = check_interactive_reports(project_dir)
+    if report_errors:
+        all_errors.extend(report_errors)
+        checks_results.append({"id": "interactive_reports", "status": "FAIL", "errors": report_errors})
+    else:
+        checks_results.append({"id": "interactive_reports", "status": "PASS"})
 
     overall_status = "FAIL" if all_errors else "PASS"
     return {
