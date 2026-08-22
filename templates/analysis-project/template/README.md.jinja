@@ -1,0 +1,39 @@
+# {{ project_title }} (`{{ project_id }}`)
+
+- **データ分類**: `{{ data_classification }}`
+- **主解析言語**: `{{ primary_language | upper }}` (SAS文字コード: `{{ sas_encoding }}`)
+- **テンプレート版**: `1.0.0`
+
+## 📁 ディレクトリ構成と4大原則
+
+1. **`src/`**: プログラム
+   - `src/sas-cp932/`: SASプログラム (CP932)
+   - `src/python/`: Pythonデータ処理・統計解析 (UTF-8)
+   - `src/r/`: R統計解析 (UTF-8)
+   - `src/typescript/`: プレゼン・報告自動化 (UTF-8)
+2. **`sql/`**: SQLクエリ・データ抽出スクリプト
+3. **`reports/`**: 報告書（Quarto, Slidev, PowerPoint）
+4. **`outputs/`**: 成果物出力先
+   - `outputs/private/`: 機微な中間集計・個票・ログ（Git除外）
+   - `outputs/release/`: 人手承認済み公開用成果物（`release-manifest.yml` 必須）
+
+## 🚀 クイックスタート
+
+### 1. SASプログラムの実行 (Cursor内)
+Cursorで `src/sas-cp932/sample_analysis.sas` を開き、`Ctrl+Shift+B`（またはタスク実行）を押します。
+ログおよびLST出力は `.run/sas/` に自動保存されます。
+
+### 2. Python解析の実行
+```bash
+uv run python src/python/sample_rwd_pipeline.py
+```
+
+### 3. R解析の実行
+```bash
+Rscript src/r/sample_survival_analysis.R
+```
+
+### 4. プロジェクトの整合性・セキュリティ検査
+```bash
+uv run python scripts/validate-project.py --project-dir .
+```

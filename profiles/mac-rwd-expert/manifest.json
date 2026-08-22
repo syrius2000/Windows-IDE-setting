@@ -1,0 +1,62 @@
+{
+  "profile_id": "mac-rwd-expert",
+  "name": "macOS Apple Silicon RWD & Local AI Expert Environment",
+  "version": "1.0.0",
+  "target_os": "macos",
+  "recommended_hardware": {
+    "chip": "Apple Silicon (M1/M2/M3/M4 Pro/Max)",
+    "ram_gb": 128
+  },
+  "packages": {
+    "homebrew": [
+      { "id": "git", "required": true },
+      { "id": "quarto", "required": true },
+      { "id": "duckdb", "required": true },
+      { "id": "node", "required": true },
+      { "id": "pnpm", "required": true },
+      { "id": "poppler", "required": true },
+      { "id": "gitleaks", "required": true },
+      { "id": "mysql-client", "required": true },
+      { "id": "ollama", "required": true }
+    ],
+    "python": {
+      "installer": "uv",
+      "python_version": "3.12",
+      "tools": [
+        { "name": "copier", "version": "9.4.1", "install_cmd": "uv tool install \"copier==9.4.1\"" },
+        { "name": "ruff", "version": "0.8+", "install_cmd": "uv tool install ruff" },
+        { "name": "pre-commit", "version": "4.0+", "install_cmd": "uv tool install pre-commit" }
+      ]
+    },
+    "r": {
+      "manager": "rig",
+      "r_version": "4.4.1"
+    },
+    "mysql_connection": {
+      "standard_direct": {
+        "python": "pymysql / mysql-connector-python",
+        "r": "RMariaDB / DBI"
+      },
+      "optional_odbc_profile": {
+        "driver": "MySQL Connector/ODBC (libmyodbc8w.so)",
+        "manager": "iODBC",
+        "architecture_requirement": "arm64",
+        "target_users": "Excel / Office / FileMaker",
+        "password_storage": "macOS Keychain (Strictly prohibited in odbc.ini)"
+      }
+    },
+    "local_ai": {
+      "engine": "ollama",
+      "models": [
+        { "name": "gpt-oss-120b", "purpose": "offline medical JSON structuring" },
+        { "name": "qwen2.5-vl:32b", "purpose": "OCR low-confidence region transcription", "optional": true },
+        { "name": "qwen2.5-coder:32b", "purpose": "local coding assistance", "optional": true }
+      ]
+    },
+    "ocr": {
+      "primary": "swift-vision-cli",
+      "fallback": "local-vlm",
+      "benchmark_baseline": "tesseract"
+    }
+  }
+}

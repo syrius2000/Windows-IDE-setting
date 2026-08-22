@@ -1,0 +1,48 @@
+# Execution runs & logs
+.run/
+*.log
+*.lst
+
+# Sensitive Private Outputs
+outputs/private/*
+!outputs/private/.gitignore
+!outputs/private/README.md
+
+# Local configuration & credentials
+config/local.paths.yml
+.env
+.env.*
+*.key
+*.pem
+*.secret
+
+# SAS & Data binary files
+*.sas7bdat
+*.sas7bcat
+*.xpt
+*.dta
+*.rds
+*.RData
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# R
+.Rproj.user/
+.Rhistory
+renv/library/
+renv/python/
+
+# Node
+node_modules/
+dist/
+.output/
+
+# OS files
+.DS_Store
+Thumbs.db

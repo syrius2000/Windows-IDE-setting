@@ -1,0 +1,33 @@
+project:
+  id: "{{ project_id }}"
+  title: "{{ project_title }}"
+  template_version: "1.0.0"
+
+data:
+  classification: "{{ data_classification }}"
+  source: "{% if data_classification == 'synthetic' %}synthetic{% elif profile == 'mac-rwd-expert' %}mysql-readonly{% else %}local-sas{% endif %}"
+  external_storage: {% if data_classification == 'synthetic' %}false{% else %}true{% endif %}
+
+analysis:
+  primary_language: "{{ primary_language }}"
+  sas_encoding: "{{ sas_encoding }}"
+  secondary_languages:
+    - python
+    - r
+    - typescript
+
+reporting:
+  formats:
+    - excel
+    - powerpoint
+    - slidev
+    - quarto
+
+ai:
+  cloud_allowed: {{ cloud_ai_allowed | lower }}
+  local_llm_allowed: {{ local_llm_allowed | lower }}
+  human_review_required: true
+
+outputs:
+  private_git_allowed: false
+  release_requires_review: true

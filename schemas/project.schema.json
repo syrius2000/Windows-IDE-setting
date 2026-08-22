@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CaseProjectConfig",
+  "description": "Validation schema for Case Project configuration (PROJECT.yml)",
+  "type": "object",
+  "required": [
+    "project",
+    "data",
+    "analysis",
+    "reporting",
+    "ai",
+    "outputs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["id", "title", "template_version"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "Project ID in kebab-case (e.g. case-urology)"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable project title"
+        },
+        "template_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+.*$",
+          "description": "Semantic version of template used"
+        }
+      }
+    },
+    "data": {
+      "type": "object",
+      "required": ["classification", "source", "external_storage"],
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": ["synthetic", "deidentified", "sensitive"],
+          "description": "Data classification level"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["synthetic", "mysql-readonly", "external-file", "local-sas"],
+          "description": "Primary data source type"
+        },
+        "external_storage": {
+          "type": "boolean",
+          "description": "Whether real data must be stored outside Git worktree"
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "required": ["primary_language", "sas_encoding", "secondary_languages"],
+      "additionalProperties": false,
+      "properties": {
+        "primary_language": {
+          "type": "string",
+          "enum": ["sas", "python", "r"],
+          "description": "Primary analysis language"
+        },
+        "sas_encoding": {
+          "type": "string",
+          "enum": ["cp932", "utf-8", "none"],
+          "description": "Encoding for SAS datasets and scripts"
+        },
+        "secondary_languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["python", "r", "typescript", "sas"]
+          },
+          "uniqueItems": true,
+          "description": "Secondary languages used in project"
+        }
+      }
+    },
+    "reporting": {
+      "type": "object",
+      "required": ["formats"],
+      "additionalProperties": false,
+      "properties": {
+        "formats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["excel", "powerpoint", "slidev", "quarto", "pdf"]
+          },
+          "uniqueItems": true,
+          "description": "Deliverable reporting formats"
+        }
+      }
+    },
+    "ai": {
+      "type": "object",
+      "required": ["cloud_allowed", "local_llm_allowed", "human_review_required"],
+      "additionalProperties": false,
+      "properties": {
+        "cloud_allowed": {
+          "type": "boolean",
+          "description": "Whether cloud LLMs (Cursor Pro Privacy Mode) are allowed for general code/synthetic data"
+        },
+        "local_llm_allowed": {
+          "type": "boolean",
+          "description": "Whether local LLMs (Ollama) are allowed"
+        },
+        "human_review_required": {
+          "type": "boolean",
+          "description": "Whether human-in-the-loop review is mandatory before output release"
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "required": ["private_git_allowed", "release_requires_review"],
+      "additionalProperties": false,
+      "properties": {
+        "private_git_allowed": {
+          "type": "boolean",
+          "enum": [false],
+          "description": "outputs/private must never be tracked in Git"
+        },
+        "release_requires_review": {
+          "type": "boolean",
+          "enum": [true],
+          "description": "outputs/release requires release-manifest.yml approval"
+        }
+      }
+    }
+  }
+}

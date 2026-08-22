@@ -1,0 +1,35 @@
+[project]
+name = "{{ project_id }}"
+version = "0.1.0"
+description = "{{ project_title }}"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=1.1.0",
+    "pandas>=2.2.0",
+    "polars>=1.15.0",
+    "pyarrow>=18.0.0",
+    "pyreadstat>=1.2.8",
+    "sqlalchemy>=2.0.36",
+    "pymysql>=1.1.1",
+    "openpyxl>=3.1.5",
+    "xlsxwriter>=3.2.0",
+    "python-pptx>=1.0.2",
+    "jsonschema>=4.23.0",
+    "pyyaml>=6.0.2",
+    "keyring>=25.5.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
+    "jupyterlab>=4.3.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]

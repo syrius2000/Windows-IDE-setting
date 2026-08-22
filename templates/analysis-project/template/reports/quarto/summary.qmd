@@ -1,0 +1,37 @@
+---
+title: "RWD Cohort Analysis Summary"
+subtitle: "Osaka University Biostatistics & RWD Platform"
+author: "Statistical Analyst"
+date: today
+format:
+  html:
+    toc: true
+    embed-resources: true
+---
+
+## 1. Executive Summary
+
+This report documents the reproducible cohort validation analysis using synthetic datasets.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(survival)
+```
+
+## 2. Cohort Data Distribution
+
+```{r load-data}
+# Synthetic data loading
+cohort <- read.csv("../../data/synthetic/synthetic_cohort.csv")
+summary(cohort)
+```
+
+## 3. Survival Analysis
+
+```{r km-plot}
+fit <- survfit(Surv(followup_days, event_occurred) ~ treatment_arm, data = cohort)
+plot(fit, col = c("blue", "red"), lty = 1:2,
+     xlab = "Follow-up Days", ylab = "Survival Probability",
+     main = "Kaplan-Meier Survival Curves")
+legend("bottomleft", legend = c("Active", "Control"), col = c("blue", "red"), lty = 1:2)
+```

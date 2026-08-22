@@ -1,0 +1,61 @@
+_min_copier_version: "9.0.0"
+_subdirectory: "template"
+
+project_id:
+  type: str
+  help: "Project ID (kebab-case, e.g. case-urology, case-pompe-disease)"
+  default: "case-analysis"
+  validator: >-
+    {% if not project_id | regex_search('^[a-z0-9]+(-[a-z0-9]+)*$') %}
+    Project ID must be lowercase alphanumeric with hyphens (kebab-case).
+    {% endif %}
+
+project_title:
+  type: str
+  help: "Project Title (e.g. 泌尿器科RWD分析, ポンペ病レジストリ解析)"
+  default: "RWD Analysis Case Study"
+
+profile:
+  type: str
+  help: "Target User Profile"
+  choices:
+    - windows-standard
+    - mac-rwd-expert
+  default: windows-standard
+
+data_classification:
+  type: str
+  help: "Data Classification Level"
+  choices:
+    - synthetic
+    - deidentified
+    - sensitive
+  default: deidentified
+
+primary_language:
+  type: str
+  help: "Primary Analysis Language"
+  choices:
+    - sas
+    - python
+    - r
+  default: sas
+
+sas_encoding:
+  type: str
+  help: "SAS Dataset/Script Encoding"
+  choices:
+    - cp932
+    - utf-8
+    - none
+  default: cp932
+
+cloud_ai_allowed:
+  type: bool
+  help: "Allow Cursor Pro Cloud AI for synthetic/general logic (Privacy Mode)?"
+  default: false
+
+local_llm_allowed:
+  type: bool
+  help: "Allow Local LLM (Ollama) processing?"
+  default: true

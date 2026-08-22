@@ -1,0 +1,21 @@
+# =============================================================================
+# Local External Paths Configuration Example
+# 本ファイルをコピーして config/local.paths.yml を作成し、ローカル環境に合わせてパスを設定してください。
+# ※ config/local.paths.yml は .gitignore によりGit追跡から除外されます。
+# =============================================================================
+
+external_storage:
+  # Windows実データ格納先例: "C:\\RWD_DATA\\case-urology"
+  # Mac実データ格納先例: "/Volumes/RWD_SECURE/case-urology"
+  raw_data_dir: "C:\\RWD_DATA\\case-urology"
+  
+  # SAS実行バイナリの上書き指定 (未指定の場合は標準レジストリから自動検出)
+  sas_executable: "C:\\Program Files\\SASHome\\SASFoundation\\9.4\\sas.exe"
+
+database:
+  # MySQL接続先 (パスワードはKeychainに保存するためここには記述しない)
+  host: "192.168.0.50"
+  port: 3306
+  database_name: "rwd_research_db"
+  username: "rwd_readonly_user"
+  use_tls: true

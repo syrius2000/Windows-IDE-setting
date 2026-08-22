@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SAS: Run current program",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/scripts/invoke-sas.ps1",
+        "-SysIn", "${file}"
+      ],
+      "windows": {
+        "command": "powershell.exe",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy", "Bypass",
+          "-File", "${workspaceFolder}/scripts/invoke-sas.ps1",
+          "-SysIn", "${file}"
+        ]
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Python: Run current pipeline (uv)",
+      "type": "shell",
+      "command": "uv",
+      "args": ["run", "python", "${file}"],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "R: Run current script",
+      "type": "shell",
+      "command": "Rscript",
+      "args": ["${file}"],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Project: Validate Integrity",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "${workspaceFolder}/scripts/validate-project.py",
+        "--project-dir",
+        "${workspaceFolder}"
+      ],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Quarto: Render HTML Report",
+      "type": "shell",
+      "command": "quarto",
+      "args": ["render", "${workspaceFolder}/reports/quarto/summary.qmd"],
+      "group": "build"
+    },
+    {
+      "label": "Slidev: Start Dev Server",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["slidev", "${workspaceFolder}/reports/slidev/slides.md"],
+      "isBackground": true
+    }
+  ]
+}

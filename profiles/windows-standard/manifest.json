@@ -1,0 +1,48 @@
+{
+  "profile_id": "windows-standard",
+  "name": "Windows 11 Standard Analysis Environment",
+  "version": "1.0.0",
+  "target_os": "windows",
+  "packages": {
+    "winget": [
+      { "id": "Microsoft.WindowsTerminal", "version": "1.21+", "required": true },
+      { "id": "Microsoft.PowerShell", "version": "7.4+", "required": true },
+      { "id": "Git.Git", "version": "2.46+", "required": true },
+      { "id": "7zip.7zip", "version": "24+", "required": true },
+      { "id": "Posit.Quarto", "version": "1.5+", "required": true },
+      { "id": "DuckDB.cli", "version": "1.1+", "required": true },
+      { "id": "OpenJS.NodeJS.LTS", "version": "20.x|22.x", "required": true }
+    ],
+    "python": {
+      "installer": "uv",
+      "python_version": "3.12",
+      "tools": [
+        { "name": "copier", "version": "9.4.1", "install_cmd": "uv tool install \"copier==9.4.1\"" },
+        { "name": "ruff", "version": "0.8+", "install_cmd": "uv tool install ruff" },
+        { "name": "pre-commit", "version": "4.0+", "install_cmd": "uv tool install pre-commit" }
+      ]
+    },
+    "r": {
+      "manager": "rig",
+      "r_version": "4.4.1",
+      "rtools": true
+    },
+    "node": {
+      "pnpm_via": "corepack enable pnpm"
+    },
+    "cursor_extensions": [
+      "ms-python.python",
+      "ms-toolsai.jupyter",
+      "REditorSupport.r",
+      "quarto.quarto",
+      "EditorConfig.EditorConfig",
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint"
+    ]
+  },
+  "encoding_policy": {
+    "sas_directory": "src/sas-cp932",
+    "sas_encoding": "cp932",
+    "general_encoding": "utf-8"
+  }
+}

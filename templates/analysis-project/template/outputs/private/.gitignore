@@ -1,0 +1,4 @@
+# outputs/private/ は機微な中間結果・個票ログ格納用のため、Git追跡から完全に除外されます
+*
+!.gitignore
+!README.md

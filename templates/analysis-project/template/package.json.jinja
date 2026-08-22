@@ -1,0 +1,22 @@
+{
+  "name": "{{ project_id }}",
+  "version": "0.1.0",
+  "description": "{{ project_title }}",
+  "private": true,
+  "scripts": {
+    "slides:dev": "slidev reports/slidev/slides.md",
+    "slides:build": "slidev build reports/slidev/slides.md",
+    "slides:export": "slidev export reports/slidev/slides.md --output outputs/private/slides.pdf",
+    "report:pptx": "ts-node src/typescript/sample_report.ts"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  },
+  "devDependencies": {
+    "@slidev/cli": "^0.50.0",
+    "@slidev/theme-default": "^0.25.0",
+    "typescript": "^5.6.0",
+    "ts-node": "^10.9.2",
+    "@types/node": "^22.0.0"
+  }
+}
