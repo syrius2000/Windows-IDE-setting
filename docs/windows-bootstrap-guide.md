@@ -51,7 +51,7 @@
 [2/6] 01-install-common.ps1   # Windows Terminal, PowerShell 7, Git, 7-Zip のサイレント導入
 [3/6] 02-install-analysis.ps1 # uv, Python 3.12, Copier 9.4.1, rig, R 4.4, Quarto, DuckDB の導入
 [4/6] 03-install-reporting.ps1# Node.js LTS, pnpm, Slidev/TypeScript 実行環境の導入
-[5/6] 04-configure.ps1        # Cursor本体の自動導入、拡張機能の一括導入、CP932/UTF-8マッピング構成
+[5/6] 04-configure.ps1        # Cursor設定・拡張機能の一括導入、CP932/UTF-8マッピング構成
 [6/6] 05-verify.ps1           # 合成データを用いたE2E全言語パイプライン自動検証
 ```
 
