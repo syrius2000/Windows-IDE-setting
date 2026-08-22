@@ -2,11 +2,13 @@
 
 [![OpenSpec](https://img.shields.io/badge/OpenSpec-spec--driven-blue)](openspec/)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![SAS](https://img.shields.io/badge/SAS-CP932-green.svg)](https://www.sas.com/)
 [![R](https://img.shields.io/badge/R-4.4.1-blue.svg)](https://www.r-project.org/)
+[![SAS](https://img.shields.io/badge/SAS-CP932%20(Optional)-green.svg)](https://www.sas.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 既存のSAS資産（CP932）やOffice報告業務を維持しつつ、Python、R、Git、AI Agent（Cursor / ローカルLLM）を活用したモダンで再現性の高いReal World Data（RWD）解析基盤です。
+
+> 💡 **SASをお持ちでない方へ**: 本基盤は **SASが未導入のPCでも、Python 3.12 / R 4.4 / DuckDB / Quarto による最新の解析環境を100%利用可能** です。
 
 ---
 
@@ -16,7 +18,7 @@
 graph TD
     subgraph L1["1. Environment層 (PC環境基盤)"]
         E1["Windows 11 Standard / macOS"]
-        E2["Cursor / Git / SAS / uv / rig / pnpm / DuckDB / Ollama"]
+        E2["Cursor / Git / uv / rig / pnpm / DuckDB / (SAS) / Ollama"]
         E3["scripts/windows/ & scripts/macos/"]
     end
 
@@ -38,49 +40,49 @@ graph TD
 
 ---
 
-## 🚀 クイックスタート
+## 🧭 利用フェーズ別ナビゲーション
 
-### #1 クリーンな Windows 11 の初期セットアップ（ゼロから一括導入）
+### ① 【初めて使う方】Windows 11 初期環境セットアップ
+クリーンな Windows 11 PC に解析ツール群（Git, uv, Python 3.12, R 4.4, Quarto, DuckDB, Node.js, Cursor設定）を一括自動導入します：
 
-SASとOfficeしか入っていないクリーンな Windows 11 PC では、**以下のいずれか1つ**を実行するだけで、全ツール群（Git, uv, Python 3.12, Copier, rig, R 4.4, Quarto, DuckDB, Node.js, pnpm, Cursor設定, CP932マッピング）が完全自動でセットアップされます：
-
-#### 【方法 A】 ワンクリック実行（最も推奨）
-本リポジトリを展開し、ルートにある **`Setup-Windows.bat`** を右クリックして **「管理者として実行」** を選択します。
-
-#### 【方法 B】 PowerShell から 1 コマンド実行
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\scripts\windows\Setup-WindowsEnvironment.ps1
-```
-
-> 📖 詳しい画面付き手順は [クリーンな Windows 11 向け初期セットアップ手順書](docs/windows-bootstrap-guide.md) をご覧ください。
+- **ワンクリック実行（推奨）**: 本リポジトリを展開し、ルートの **`Setup-Windows.bat`** を右クリック → **「管理者として実行」**
+- **PowerShell から実行**:
+  ```powershell
+  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+  .\scripts\windows\Setup-WindowsEnvironment.ps1
+  ```
+- 📖 詳細は [クリーン Windows 11 初期セットアップ手順書](docs/windows-bootstrap-guide.md) をご覧ください。
 
 ---
 
-### #2 新規解析テーマ（Case Project）の生成
-
-環境構築後、新しい解析案件（例: 泌尿器科、ポンペ病など）を始める際は、以下のコマンド1発で標準化された独立Gitリポジトリを生成します：
+### ② 【導入済みの方】新規解析テーマ（Case Project）の生成
+解析テーマ（例: 泌尿器科、ポンペ病等）ごとに、独立したGitリポジトリを1コマンドで生成します：
 
 ```powershell
-# Windows 11 の場合
-.\scripts\project\New-AnalysisProject.ps1 `
-  -Name "case-urology" `
-  -Profile "windows-standard" `
-  -DataClassification "deidentified"
+# 【パターン A】 Python 主解析（SAS不要・推奨）
+.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "python"
+
+# 【パターン B】 R 主解析（SAS不要・推奨）
+.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "r"
+
+# 【パターン C】 既存SAS併用（SAS保有時のみ）
+.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "sas" -SasEncoding "cp932"
 ```
 
 ```bash
 # macOS の場合
-./scripts/project/new-analysis-project.sh \
-  case-pompe-disease \
-  mac-rwd-expert \
-  sensitive
+./scripts/project/new-analysis-project.sh case-pompe-disease mac-rwd-expert sensitive python
 ```
 
 ---
 
-### #3 Mac 専門家向け（MySQL読取専用 ＆ ローカルOCR）
+### ③ 【日常の解析を行う方】解析実行・報告書作成・運用
+- 📖 [初心者向けチートシート](docs/beginner-cheatsheet.md): 4大ディレクトリ配置と解析実行コマンド
+- 🛠️ [日常運用マニュアル](docs/daily-operations.md): Python/R標準フロー、SASログ確認、成果物承認公開
 
+---
+
+### ④ 【Mac 専門家向け】MySQL読取専用 ＆ ローカルOCR
 ```bash
 # 1. 環境診断
 ./scripts/macos/diagnose.sh

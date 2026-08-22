@@ -93,7 +93,7 @@ try {
         -Name $TestProjectName `
         -Profile "windows-standard" `
         -DataClassification "synthetic" `
-        -DestinationDir $TempDir `
+        -DestinationRoot $TempDir `
         -NonInteractive
 
     if (Test-Path (Join-Path $TestProjectPath "PROJECT.yml")) {

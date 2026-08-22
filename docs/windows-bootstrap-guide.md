@@ -1,6 +1,8 @@
 # クリーンな Windows 11 向け初期セットアップ手順書（Zero-to-One Setup Guide）
 
-本手順書は、**SASとOfficeしか入っていないクリーンな Windows 11 PC** に、RWD解析およびAI Agent（Cursor）を活用したモダンな開発環境を一括導入するためのマニュアルです。
+本手順書は、**クリーンな Windows 11 PC** に、RWD解析およびAI Agent（Cursor）を活用したモダンな開発環境を一括導入するためのマニュアルです。
+
+> ℹ️ **SASの有無について**: **SAS 9.4 を保有していないPCでも、Python / R を用いた解析環境が100%自動でセットアップされます。** SASは必須要件ではありません。
 
 ---
 
@@ -8,10 +10,10 @@
 
 1. **PCの権限**: 個人所有PCであり、ローカル管理者権限（Administrator）があること。
 2. **導入済みソフトウェア**:
-   - SAS 9.4 (Foundation) がインストール済みであること（文字コード: CP932）。
    - Microsoft Office (Excel, PowerPoint) がインストール済みであること。
    - Cursor Pro アカウントを購入・取得済みであること（Cursorアプリ本体は未導入でも本スクリプトにより自動導入されます）。
-3. **インターネット接続**: 初回ツール群のダウンロードのため、インターネットに接続されていること。
+   - *(任意)* SAS 9.4 (Foundation)（既存のSAS資産・マクロを利用する場合のみ）。
+3. **インターネット接続**: 初回ツール群（Git, uv, Python, R, Quarto, Node.js等）のダウンロードのため、インターネットに接続されていること。
 
 ---
 
@@ -60,15 +62,30 @@
 
 ---
 
-## 🎯 セットアップ完了後: 最初の解析案件を作成する
+## 🎯 セットアップ完了後: 最初の解析案件（Case Project）を作成する
 
-環境構築が完了したら、新しい解析案件（Case Project）を1コマンドで生成できます：
+環境構築が完了したら、主解析言語に応じたコマンドで新しい解析案件を1発生成できます：
 
+### パターン A: Python 主解析プロジェクト（SAS不要・推奨）
 ```powershell
 .\scripts\project\New-AnalysisProject.ps1 `
     -Name "case-urology" `
-    -Profile "windows-standard" `
-    -DataClassification "deidentified"
+    -PrimaryLanguage "python"
+```
+
+### パターン B: R 主解析プロジェクト（SAS不要・推奨）
+```powershell
+.\scripts\project\New-AnalysisProject.ps1 `
+    -Name "case-urology" `
+    -PrimaryLanguage "r"
+```
+
+### パターン C: 既存SAS資産併用プロジェクト（SAS保有時のみ）
+```powershell
+.\scripts\project\New-AnalysisProject.ps1 `
+    -Name "case-urology" `
+    -PrimaryLanguage "sas" `
+    -SasEncoding "cp932"
 ```
 
 - 画面のプレビューを確認し、`Y` を入力すると、独立したGitリポジトリが初期化され、Cursorが自動起動します。
@@ -77,14 +94,14 @@
 
 ## ❓ トラブルシューティング ＆ FAQ
 
-### Q1. `スクリプトの実行が無効になっているため...` というエラーが出る
+### Q1. SASを持っていませんが、問題なく使えますか？
+- **回答**: はい、全く問題ありません。セットアップスクリプトはSASがなくてもPython 3.12、R 4.4、DuckDB、Quarto等のモダン統計環境を100%正常にセットアップします。
+
+### Q2. `スクリプトの実行が無効になっているため...` というエラーが出る
 - **対処法**: PowerShellで一時的に実行ポリシーを解除します：
   ```powershell
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
   ```
 
-### Q2. WinGet が見つからない / 動作しない
+### Q3. WinGet が見つからない / 動作しない
 - **対処法**: Microsoft Store から **「アプリ インストーラー」** を最新化するか、公式配布元 [https://aka.ms/getwinget](https://aka.ms/getwinget) からインストーラーを取得して実行してください。
-
-### Q3. Cursor の拡張機能が一部入らなかった
-- **対処法**: Cursor本体が起動することを確認後、`.\scripts\windows\04-configure.ps1` を再度実行してください。

@@ -22,10 +22,12 @@ param(
     [string]$DataClassification = "deidentified",
 
     [Parameter(Mandatory = $false)]
-    [string]$PrimaryLanguage = "sas",
+    [ValidateSet("sas", "python", "r", "typescript")]
+    [string]$PrimaryLanguage = "python",
 
     [Parameter(Mandatory = $false)]
-    [string]$SasEncoding = "cp932",
+    [ValidateSet("cp932", "utf-8", "none")]
+    [string]$SasEncoding = $(if ($PrimaryLanguage -eq "sas") { "cp932" } else { "none" }),
 
     [Parameter(Mandatory = $false)]
     [string]$DestinationRoot = (Join-Path $env:USERPROFILE "Programing\RWD-Projects"),

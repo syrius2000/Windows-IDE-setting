@@ -6,10 +6,10 @@
 
 ## 📁 ディレクトリ構成と4大原則
 
-1. **`src/`**: プログラム
-   - `src/sas-cp932/`: SASプログラム (CP932)
+1. **`src/`**: プログラムソース
    - `src/python/`: Pythonデータ処理・統計解析 (UTF-8)
    - `src/r/`: R統計解析 (UTF-8)
+   - `src/sas-cp932/`: SASプログラム (CP932, SAS保有時のみ利用)
    - `src/typescript/`: プレゼン・報告自動化 (UTF-8)
 2. **`sql/`**: SQLクエリ・データ抽出スクリプト
 3. **`reports/`**: 報告書（Quarto, Slidev, PowerPoint）
@@ -17,23 +17,50 @@
    - `outputs/private/`: 機微な中間集計・個票・ログ（Git除外）
    - `outputs/release/`: 人手承認済み公開用成果物（`release-manifest.yml` 必須）
 
-## 🚀 クイックスタート
+## 🚀 クイックスタート (解析実行)
 
-### 1. SASプログラムの実行 (Cursor内)
-Cursorで `src/sas-cp932/sample_analysis.sas` を開き、`Ctrl+Shift+B`（またはタスク実行）を押します。
-ログおよびLST出力は `.run/sas/` に自動保存されます。
-
-### 2. Python解析の実行
+{% if primary_language == 'python' %}
+### 1. Python 解析の実行 (uv)
 ```bash
 uv run python src/python/sample_rwd_pipeline.py
 ```
 
-### 3. R解析の実行
+### 2. Quarto 報告書の生成
+```bash
+quarto render reports/quarto/summary.qmd
+```
+{% elif primary_language == 'r' %}
+### 1. R 解析の実行
 ```bash
 Rscript src/r/sample_survival_analysis.R
 ```
 
-### 4. プロジェクトの整合性・セキュリティ検査
+### 2. Quarto 報告書の生成
+```bash
+quarto render reports/quarto/summary.qmd
+```
+{% elif primary_language == 'sas' %}
+### 1. SAS プログラムの実行 (Cursor内)
+Cursorで `src/sas-cp932/sample_analysis.sas` を開き、`Ctrl+Shift+B`（またはタスク実行）を押します。
+ログおよびLST出力は `.run/sas/` に自動保存されます。
+
+### 2. Python / R 解析の実行
+```bash
+uv run python src/python/sample_rwd_pipeline.py
+Rscript src/r/sample_survival_analysis.R
+```
+{% else %}
+### 1. 解析スクリプトの実行
+```bash
+uv run python src/python/sample_rwd_pipeline.py
+Rscript src/r/sample_survival_analysis.R
+```
+{% endif %}
+
+### 🛡️ プロジェクトの健全性・セキュリティ検査
+いつでも以下のコマンドで安全性を検証できます：
 ```bash
 uv run python scripts/validate-project.py --project-dir .
 ```
+
+> ℹ️ **SASについて**: SASを保有していない場合、`src/sas-cp932/` や SAS実行タスクは使用せず、Python（`uv`）または R を用いてすべての解析・報告業務を進めることができます。

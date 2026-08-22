@@ -6,7 +6,7 @@
 
 ## 🌟 0. クリーンな Windows 11 PC での初回一括セットアップ
 
-SASとOfficeしか入っていないPCを初期化・構築する場合：
+PCに一括で解析環境を導入する場合（**SASの有無にかかわらず実行可能**）：
 
 1. 本リポジトリを展開し、フォルダ内の **`Setup-Windows.bat`** を右クリックして **「管理者として実行」** します。
 2. 自動的に WinGet, Git, Python 3.12, R 4.4, Quarto, DuckDB, Node.js, Cursor設定が完了します。
@@ -16,10 +16,10 @@ SASとOfficeしか入っていないPCを初期化・構築する場合：
 
 ## 🌟 4大ディレクトリ配置原則（これだけ覚えればOK）
 
-1. 📂 **`src/`**: プログラム（SAS, Python, R, TypeScript）
-   - `src/sas-cp932/`: SASコード (CP932文字コード)
-   - `src/python/`: Python解析スクリプト (UTF-8)
-   - `src/r/`: R統計解析コード (UTF-8)
+1. 📂 **`src/`**: プログラム（Python, R, SAS, TypeScript）
+   - `src/python/`: Python解析スクリプト (UTF-8, 推奨)
+   - `src/r/`: R統計解析コード (UTF-8, 推奨)
+   - `src/sas-cp932/`: SASコード (CP932, SAS保有時のみ利用)
 2. 📊 **`sql/`**: SQLクエリ・データ抽出スクリプト
 3. 📑 **`reports/`**: 報告書（Quarto, Slidev, PowerPoint）
 4. 📦 **`outputs/`**: 成果物出力先
@@ -30,16 +30,22 @@ SASとOfficeしか入っていないPCを初期化・構築する場合：
 
 ## 🚀 1. 新規解析テーマ（Case Project）の作成
 
-PowerShell（Windows）またはターミナル（Mac）で以下のコマンドを実行します：
+主解析言語（Python / R / SAS）に応じてコマンドを実行します：
 
 ```powershell
-# Windows 11 の場合
-.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -Profile "windows-standard" -DataClassification "deidentified"
+# 【パターン A】 Python 主解析プロジェクト（SAS不要・推奨）
+.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "python"
+
+# 【パターン B】 R 主解析プロジェクト（SAS不要・推奨）
+.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "r"
+
+# 【パターン C】 既存SAS併用プロジェクト（SAS保有時のみ）
+.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "sas" -SasEncoding "cp932"
 ```
 
 ```bash
 # macOS の場合
-./scripts/project/new-analysis-project.sh case-pompe-disease mac-rwd-expert sensitive
+./scripts/project/new-analysis-project.sh case-pompe-disease mac-rwd-expert sensitive python
 ```
 
 - 画面に表示されるプレビューを確認し、`Y` を押すとGitが初期化され、Cursorが自動起動します。
@@ -48,12 +54,7 @@ PowerShell（Windows）またはターミナル（Mac）で以下のコマンド
 
 ## 💻 2. 日常の解析実行方法（Cursor内）
 
-### SASプログラムの実行
-1. Cursorで `src/sas-cp932/sample_analysis.sas` を開きます。
-2. キーボードで **`Ctrl + Shift + B`** を押します（または上部メニュー `ターミナル` → `タスクの実行` → `SAS: Run current program`）。
-3. 実行結果（`.log` と `.lst`）は `.run/sas/` に自動保存され、コンソールにエラー有無が表示されます。
-
-### Pythonスクリプトの実行（uv）
+### Pythonスクリプトの実行（`uv` 推奨）
 ```powershell
 uv run python src/python/sample_rwd_pipeline.py
 ```
@@ -71,6 +72,13 @@ quarto render reports/quarto/summary.qmd
 # 編集可能 PowerPoint の作成
 pnpm report:pptx
 ```
+
+### SASプログラムの実行（SAS保有時のみ）
+1. Cursorで `src/sas-cp932/sample_analysis.sas` を開きます。
+2. キーボードで **`Ctrl + Shift + B`** を押します（または上部メニュー `ターミナル` → `タスクの実行` → `SAS: Run current program`）。
+3. 実行結果（`.log` と `.lst`）は `.run/sas/` に自動保存され、コンソールにエラー有無が表示されます。
+
+> ℹ️ **注意**: SASが未導入のPCではSAS実行タスク（`Ctrl+Shift+B`）は実行しないでください（Python/Rには一切影響しません）。
 
 ---
 
