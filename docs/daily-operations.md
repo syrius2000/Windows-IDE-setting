@@ -72,7 +72,30 @@ pnpm report:pptx
 
 ---
 
-## 4. 成果物の承認と公開手順 (`outputs/release/`)
+## 4. Python / R でのSASデータ受け渡し（任意・SAS併用時）
+
+SASで前処理・出力した中間データセット（`.sas7bdat` 等）をPythonやRで読み込む場合、CP932文字コードを明示的に指定します。
+
+### Python (`pyreadstat`) での読み込み例:
+```python
+import pyreadstat
+
+# 外部データ領域からCP932エンコーディングで読込
+df, meta = pyreadstat.read_sas7bdat(
+    "C:/RWD_DATA/case-urology/cohort.sas7bdat",
+    encoding="cp932"
+)
+```
+
+### R (`haven`) での読み込み例:
+```r
+library(haven)
+cohort <- read_sas("C:/RWD_DATA/case-urology/cohort.sas7bdat", encoding = "cp932")
+```
+
+---
+
+## 5. 成果物の承認と公開手順 (`outputs/release/`)
 
 集約表、グラフ、PowerPointスライドを外部報告に用いる際は、必ず以下の手順を踏みます：
 
@@ -105,7 +128,7 @@ pnpm report:pptx
 
 ---
 
-## 5. テンプレート更新の検知と適用
+## 6. テンプレート更新の検知と適用
 
 共通基盤テンプレート（`templates/analysis-project`）に新機能や設定更新があった場合：
 

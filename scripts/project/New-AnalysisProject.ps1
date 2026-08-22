@@ -22,7 +22,7 @@ param(
     [string]$DataClassification = "deidentified",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("sas", "python", "r", "typescript")]
+    [ValidateSet("python", "r", "sas")]
     [string]$PrimaryLanguage = "python",
 
     [Parameter(Mandatory = $false)]

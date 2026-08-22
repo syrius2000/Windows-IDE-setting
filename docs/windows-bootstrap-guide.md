@@ -10,9 +10,8 @@
 
 1. **PCの権限**: 個人所有PCであり、ローカル管理者権限（Administrator）があること。
 2. **導入済みソフトウェア**:
-   - Microsoft Office (Excel, PowerPoint) がインストール済みであること。
-   - Cursor Pro アカウントを購入・取得済みであること（Cursorアプリ本体は未導入でも本スクリプトにより自動導入されます）。
-   - *(任意)* SAS 9.4 (Foundation)（既存のSAS資産・マクロを利用する場合のみ）。
+   - **Cursor IDE**: [Cursor 公式サイト](https://www.cursor.com/) からインストールし、Cursor Pro アカウントでログインを完了しておくこと。
+   - *(任意)* **SAS 9.4 (Foundation)**: 既存のSAS資産・マクロを利用する場合のみ。保有していなくてもPython/R環境は100%利用可能です。
 3. **インターネット接続**: 初回ツール群（Git, uv, Python, R, Quarto, Node.js等）のダウンロードのため、インターネットに接続されていること。
 
 ---
