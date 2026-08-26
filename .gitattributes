@@ -1,0 +1,12 @@
+# Line endings
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Windows PowerShell 5.1 requires UTF-8 with BOM for scripts that contain
+# non-ASCII (Japanese) or that must parse identically after clone on Win11.
+# Keep these as text; do not mark as binary. BOM is part of the file content.
+scripts/windows/*.ps1 text eol=crlf
+scripts/project/*.ps1 text eol=crlf
+Setup-Windows.bat text eol=crlf

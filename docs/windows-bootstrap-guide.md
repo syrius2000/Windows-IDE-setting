@@ -104,3 +104,29 @@
 
 ### Q3. WinGet が見つからない / 動作しない
 - **対処法**: Microsoft Store から **「アプリ インストーラー」** を最新化するか、公式配布元 [https://aka.ms/getwinget](https://aka.ms/getwinget) からインストーラーを取得して実行してください。
+
+### Q4. `'AI' is not recognized` や文字化けしたあと構文エラーになる
+- **原因**: `Setup-Windows.bat` 内の `&` がコマンド区切りと解釈された、または `.ps1` が UTF-8（BOMなし）のまま Windows PowerShell 5.1 に読まれ CP932 誤解釈された。
+- **対処法**: 本リポジトリの最新版（UTF-8 BOM 付きスクリプト）を使う。開発者は `scripts/windows/*.ps1` を macOS で保存し直したあと、BOM が消えていないか確認する（詳細は `AGENTS.md` の Windows PowerShell 例外）。
+
+### Q5. `Variable reference is not valid. ':' was not followed by...` が出る
+- **原因**: ダブルクォート文字列内の `$name: $_` を PowerShell がドライブ修飾変数と誤認する。
+- **対処法**: `${name}:` のように波括弧で変数名を区切る（本リポジトリでは修正済み）。
+
+### Q6. Case Project はできたが「Initial Git commit」がスキップされる
+- **原因**: `git config --global user.name` / `user.email` が未設定。
+- **対処法**: 診断（`00-diagnose.ps1`）で WARN が出ます。次を設定してから Case Project を作り直すか、手動で初回コミットしてください。
+  ```powershell
+  git config --global user.name "Your Name"
+  git config --global user.email "you@example.com"
+  ```
+
+### 追加の実機トラブル一覧
+初回 Win11 検証で踏んだ原因の要約は [windows-troubleshooting.md](windows-troubleshooting.md) を参照してください。
+
+### macOS で Windows 用 `.ps1` を編集したら
+必ず BOM 検査を実行してください（CI でも同じ検査が走ります）:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Assert-Utf8Bom.ps1
+```

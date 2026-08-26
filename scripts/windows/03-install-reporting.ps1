@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     03-install-reporting.ps1 - Install Reporting & Slidev/PPTX Stack
 .DESCRIPTION
@@ -9,7 +9,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$LogDir = Join-Path (Split-Path -Parent $ScriptDir) ".run\logs"
+$LogDir = Join-Path (Split-Path -Parent (Split-Path -Parent $ScriptDir)) ".run\logs"
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 $LogFile = Join-Path $LogDir "install-reporting.log"
 

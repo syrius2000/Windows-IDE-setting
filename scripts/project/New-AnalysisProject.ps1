@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     New-AnalysisProject.ps1 - Case Project Factory for Windows 11
 .DESCRIPTION
@@ -42,8 +42,25 @@ $ErrorActionPreference = "Stop"
 # Ensure UTF-8 Console Output
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$PlatformRoot = Split-Path -Parent $ScriptDir
+# Prefer $PSScriptRoot (reliable under powershell -File). Walk up until repo root.
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$PlatformRoot = $null
+$probe = $ScriptDir
+for ($i = 0; $i -lt 6; $i++) {
+    $candidateTpl = Join-Path $probe "templates\analysis-project"
+    $candidateCopier = Join-Path $candidateTpl "copier.yml"
+    if ((Test-Path -LiteralPath $candidateTpl) -and (Test-Path -LiteralPath $candidateCopier)) {
+        $PlatformRoot = $probe
+        break
+    }
+    $parent = Split-Path -Parent $probe
+    if (-not $parent -or $parent -eq $probe) { break }
+    $probe = $parent
+}
+if (-not $PlatformRoot) {
+    # Fallback: scripts/project -> ../..
+    $PlatformRoot = Split-Path -Parent (Split-Path -Parent $ScriptDir)
+}
 $TemplateDir = Join-Path $PlatformRoot "templates\analysis-project"
 
 Write-Host "========================================================" -ForegroundColor Cyan
@@ -54,11 +71,13 @@ Write-Host "  Profile:             $Profile"
 Write-Host "  Data Classification: $DataClassification"
 Write-Host "  Primary Language:    $PrimaryLanguage (SAS Encoding: $SasEncoding)"
 Write-Host "  Destination Root:    $DestinationRoot"
+Write-Host "  Platform Root:       $PlatformRoot"
+Write-Host "  Template Dir:        $TemplateDir"
 Write-Host "========================================================" -ForegroundColor Cyan
 
 # 1. Validation of Prerequisites
-if (-not (Test-Path $TemplateDir)) {
-    Write-Error "[ERROR] Template directory not found at: $TemplateDir"
+if (-not (Test-Path -LiteralPath $TemplateDir)) {
+    Write-Error "[ERROR] Template directory not found at: $TemplateDir (ScriptDir=$ScriptDir)"
     exit 1
 }
 
@@ -82,7 +101,7 @@ if (-not (Test-Path $DestinationRoot)) {
 
 $TargetDir = Join-Path $DestinationRoot $Name
 if (Test-Path $TargetDir) {
-    $existingFiles = Get-ChildItem -Path $TargetDir -Force
+    $existingFiles = @(Get-ChildItem -Path $TargetDir -Force -ErrorAction SilentlyContinue)
     if ($existingFiles.Count -gt 0) {
         Write-Error "[ERROR] Target directory already exists and is not empty: $TargetDir"
         exit 1
@@ -134,9 +153,20 @@ try {
         Copy-Item -Path $ValidateSource -Destination (Join-Path $ProjectScriptsDir "validate-project.py") -Force
     }
 
+    # Ship schema with the Case Project so validate-project.py works offline/out-of-tree
+    $SchemaSource = Join-Path $PlatformRoot "schemas\project.schema.json"
+    $ProjectSchemaDir = Join-Path $TargetDir "schemas"
+    if (Test-Path $SchemaSource) {
+        New-Item -ItemType Directory -Path $ProjectSchemaDir -Force | Out-Null
+        Copy-Item -Path $SchemaSource -Destination (Join-Path $ProjectSchemaDir "project.schema.json") -Force
+    }
+
     # 5. Integrity & Governance Validation (via uv run python or fallback)
     Write-Host "[2/6] Validating Project Schema & Directory Governance..." -ForegroundColor Green
     $SchemaPath = Join-Path $PlatformRoot "schemas\project.schema.json"
+    if (-not (Test-Path -LiteralPath $SchemaPath)) {
+        $SchemaPath = Join-Path $ProjectSchemaDir "project.schema.json"
+    }
     $ValidateScript = Join-Path $ProjectScriptsDir "validate-project.py"
     
     $UvCmd = Get-Command "uv" -ErrorAction SilentlyContinue
@@ -198,21 +228,25 @@ try {
             Pop-Location
         }
 
-        # 9. Launch Cursor
-        Write-Host "`n[6/6] Launching Cursor IDE..." -ForegroundColor Green
-        $CursorCmd = Get-Command "cursor" -ErrorAction SilentlyContinue
-        if (-not $CursorCmd) {
-            $CursorUserBin = Join-Path $env:LOCALAPPDATA "Programs\cursor\resources\app\bin"
-            if (Test-Path $CursorUserBin) {
-                $env:Path = "$CursorUserBin;$env:Path"
-                $CursorCmd = Get-Command "cursor" -ErrorAction SilentlyContinue
+        # 9. Launch Cursor (skip in NonInteractive / E2E to avoid file locks)
+        if (-not $NonInteractive) {
+            Write-Host "`n[6/6] Launching Cursor IDE..." -ForegroundColor Green
+            $CursorCmd = Get-Command "cursor" -ErrorAction SilentlyContinue
+            if (-not $CursorCmd) {
+                $CursorUserBin = Join-Path $env:LOCALAPPDATA "Programs\cursor\resources\app\bin"
+                if (Test-Path $CursorUserBin) {
+                    $env:Path = "$CursorUserBin;$env:Path"
+                    $CursorCmd = Get-Command "cursor" -ErrorAction SilentlyContinue
+                }
             }
-        }
 
-        if ($CursorCmd) {
-            & cursor $TargetDir
+            if ($CursorCmd) {
+                & cursor $TargetDir
+            } else {
+                Write-Host "[INFO] 'cursor' command not in PATH. Please open '$TargetDir' in Cursor." -ForegroundColor Yellow
+            }
         } else {
-            Write-Host "[INFO] 'cursor' command not in PATH. Please open '$TargetDir' in Cursor." -ForegroundColor Yellow
+            Write-Host "`n[6/6] NonInteractive: skipping Cursor launch." -ForegroundColor Gray
         }
     } else {
         Write-Host "`n[INFO] Git initialization skipped by user." -ForegroundColor Yellow

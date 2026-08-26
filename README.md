@@ -109,6 +109,13 @@ python3 ./scripts/macos/test-odbc.py --dsn rwd_research_db
 ## 📚 ドキュメント一覧
 
 - 🚀 [クリーン Windows 11 初期セットアップ手順書](docs/windows-bootstrap-guide.md)
+- 🧰 [Windows 初回セットアップ Troubleshoot](docs/windows-troubleshooting.md)
+
+macOS で `scripts/windows/*.ps1` を編集したあとは、Push 前に BOM 検査を実行してください（CI の Windows static gate でも同じ検査が走ります）:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Assert-Utf8Bom.ps1
+```
 - 📖 [初心者向けチートシート](docs/beginner-cheatsheet.md)
 - 🛠️ [日常運用マニュアル](docs/daily-operations.md)
 - 📋 [ソフトウェア構成表（BOM）](docs/software-matrix.md)

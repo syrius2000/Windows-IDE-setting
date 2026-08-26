@@ -1,0 +1,61 @@
+name: Windows static gate
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  windows-static-gate:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assert UTF-8 BOM on Windows scripts
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Assert-Utf8Bom.ps1
+
+      - name: Parse all PowerShell scripts
+        shell: pwsh
+        run: |
+          $fail = 0
+          Get-ChildItem -Path .\scripts -Recurse -Filter *.ps1 | ForEach-Object {
+            $errs = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
+            if ($errs -and $errs.Count -gt 0) {
+              Write-Host "PARSE FAIL: $($_.FullName)"
+              $errs | ForEach-Object { Write-Host "  $_" }
+              $fail++
+            } else {
+              Write-Host "PARSE OK: $($_.FullName)"
+            }
+          }
+          if ($fail -gt 0) { exit 1 }
+          Write-Host "All PowerShell scripts parsed successfully."
+
+      - name: Assert Posit.rig package id in repo
+        shell: pwsh
+        run: |
+          $analysis = Get-Content -LiteralPath .\scripts\windows\02-install-analysis.ps1 -Raw
+          $matrix = Get-Content -LiteralPath .\docs\software-matrix.md -Raw
+          if ($analysis -notmatch 'Posit\.rig') {
+            Write-Error "scripts/windows/02-install-analysis.ps1 must reference Posit.rig"
+            exit 1
+          }
+          # Ban obsolete WinGet id usage (comments saying it does not exist are OK)
+          if ($analysis -match '(?i)--id["\s,]+RProject\.rig|winget install[^\r\n]*RProject\.rig') {
+            Write-Error "scripts/windows/02-install-analysis.ps1 must not install RProject.rig"
+            exit 1
+          }
+          if ($matrix -notmatch 'Posit\.rig') {
+            Write-Error "docs/software-matrix.md must reference Posit.rig"
+            exit 1
+          }
+          if ($matrix -match '(?i)winget install[^\r\n|`]*RProject\.rig') {
+            Write-Error "docs/software-matrix.md must not recommend installing RProject.rig"
+            exit 1
+          }
+          Write-Host "Posit.rig package id gate PASSED."

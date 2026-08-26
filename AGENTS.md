@@ -12,5 +12,6 @@
 - **相対パスリンクの徹底**: Markdownドキュメント内のリポジトリ内相互リンクは、必ず相対パス（`[text](docs/...)`）で記述すること。
 - **実データのGit混入防止**: 実患者データ、MySQLパスワード、APIキー、`.sas7bdat` をGitコミット・ステージングしてはならない。
 - **文字コードの境界分離**: SASコードはCP932、それ以外のPython/R/TypeScript/MarkdownはUTF-8（BOMなし）を厳守すること。
+- **Windows PowerShell 例外**: `scripts/windows/*.ps1`・`scripts/project/*.ps1`・`Setup-Windows.bat` は **UTF-8（BOMあり）** 必須。Windows PowerShell 5.1 は BOM なし UTF-8 を CP932 として誤読し、日本語や `$name:` 周辺で構文エラーになる。macOS で編集した後は BOM が消えていないか確認すること。
 - **4大ディレクトリ原則**: Case Project内ではプログラムを `src/`、SQLを `sql/`、報告書を `reports/`、出力を `outputs/` に配置すること。
 - **開示統制の遵守**: `outputs/release/` に成果物を配置する場合は、必ず `release-manifest.yml` による人手確認記録を伴うこと。

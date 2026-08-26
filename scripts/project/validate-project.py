@@ -20,6 +20,17 @@ from typing import Any, Dict, List
 import jsonschema
 import yaml
 
+
+def _configure_stdio() -> None:
+    """Avoid UnicodeEncodeError on Windows consoles defaulting to CP932."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
 PROHIBITED_EXTENSIONS = {
     ".sas7bdat",
     ".sas7bcat",
@@ -35,12 +46,21 @@ PROHIBITED_EXTENSIONS = {
 
 
 def find_platform_root(start_path: Path) -> Path:
-    """Finds the root directory containing schemas/ and templates/."""
-    curr = start_path.resolve()
-    while curr != curr.parent:
-        if (curr / "schemas" / "project.schema.json").exists():
-            return curr
-        curr = curr.parent
+    """Finds the root directory containing schemas/ and templates/.
+
+    Searches upward from start_path, then from this script's location.
+    Case projects often live outside the platform repo, so callers should
+    prefer --schema when validating a generated project in TEMP.
+    """
+    candidates = [start_path.resolve(), Path(__file__).resolve().parent]
+    seen = set()
+    for start in candidates:
+        curr = start
+        while curr != curr.parent and curr not in seen:
+            seen.add(curr)
+            if (curr / "schemas" / "project.schema.json").exists():
+                return curr
+            curr = curr.parent
     return start_path.resolve()
 
 
@@ -122,16 +142,19 @@ def check_git_exclusions_non_invasive(project_dir: Path) -> List[str]:
                 errors.append(".gitignore does not exclude .run/ directory.")
         return errors
 
-    # Check non-invasively via git check-ignore --stdin
-    test_paths = "outputs/private/test_sample.tmp\nconfig/local.paths.yml\n.run/test.log\n"
+    # Use bytes stdin so Windows does not translate \n -> \r\n (which breaks check-ignore).
+    test_paths = b"outputs/private/test_sample.tmp\nconfig/local.paths.yml\n.run/test.log\n"
     res = subprocess.run(
         ["git", "check-ignore", "--stdin"],
         input=test_paths,
         cwd=str(project_dir),
         capture_output=True,
-        text=True
     )
-    ignored_paths = set(res.stdout.splitlines())
+    ignored_paths = {
+        ln.strip().strip('"').rstrip("\r")
+        for ln in res.stdout.decode("utf-8", errors="replace").splitlines()
+        if ln.strip()
+    }
     if "outputs/private/test_sample.tmp" not in ignored_paths:
         errors.append("outputs/private/ is NOT ignored by Git according to 'git check-ignore'.")
     if ".run/test.log" not in ignored_paths:
@@ -142,10 +165,10 @@ def check_git_exclusions_non_invasive(project_dir: Path) -> List[str]:
         ["git", "ls-files"],
         cwd=str(project_dir),
         capture_output=True,
-        text=True
+        text=True,
     )
     if res_ls.returncode == 0:
-        tracked_files = res_ls.stdout.splitlines()
+        tracked_files = [ln.strip().rstrip("\r") for ln in res_ls.stdout.splitlines()]
         for tf in tracked_files:
             p = Path(tf)
             if p.suffix.lower() in PROHIBITED_EXTENSIONS:
@@ -408,7 +431,8 @@ def main() -> int:
         print(f"  Target: {project_dir}")
         print(f"========================================================")
         for check in result["checks"]:
-            symbol = "✓" if check["status"] == "PASS" else "✗"
+            # ASCII markers: Windows CP932 consoles may still reject ✓/✗
+            symbol = "OK" if check["status"] == "PASS" else "FAIL"
             print(f"  [{symbol}] {check['id']}: {check['status']}")
             if "errors" in check:
                 for err in check["errors"]:
@@ -419,4 +443,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    _configure_stdio()
     sys.exit(main())

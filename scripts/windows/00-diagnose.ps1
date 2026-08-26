@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     00-diagnose.ps1 - Windows 11 Environment & Hardware Diagnostic Script
 .DESCRIPTION
@@ -117,7 +117,44 @@ if ($WinGetCmd) {
     Write-Host "  [⚠️] WinGet: 未検出 (Microsoft Store から「アプリ インストーラー」を導入、または https://aka.ms/getwinget より入手してください)" -ForegroundColor Yellow
 }
 
-# 8. Output Report JSON (to both .run/reports/diagnose-report.json and .run/diagnose-report.json)
+# 8. Git identity (non-fatal): needed for Case Project initial commit
+$GitCmd = Get-Command "git" -ErrorAction SilentlyContinue
+if ($GitCmd) {
+    $GitUser = (& git config --global --get user.name) 2>$null
+    $GitEmail = (& git config --global --get user.email) 2>$null
+    if ([string]::IsNullOrWhiteSpace($GitUser) -or [string]::IsNullOrWhiteSpace($GitEmail)) {
+        $Report.status = "WARN"
+        $Report.warnings += "Git user.name/user.email not configured. Case Project initial commit will be skipped until set."
+        $Report.checks += @{
+            id = "git_identity"
+            name = "Git user.name / user.email"
+            status = "WARN"
+            message = "Not configured (setup continues; initial commit may be skipped)"
+        }
+        Write-Host "  [⚠️] Git identity: WARN (user.name / user.email 未設定)" -ForegroundColor Yellow
+        Write-Host "       Case Project の初回コミットがスキップされます。例:" -ForegroundColor Yellow
+        Write-Host "         git config --global user.name `"Your Name`"" -ForegroundColor Gray
+        Write-Host "         git config --global user.email `"you@example.com`"" -ForegroundColor Gray
+    } else {
+        $Report.checks += @{
+            id = "git_identity"
+            name = "Git user.name / user.email"
+            status = "PASS"
+            message = "Configured"
+        }
+        Write-Host "  [✓] Git identity: PASS ($GitUser / $GitEmail)" -ForegroundColor Green
+    }
+} else {
+    $Report.checks += @{
+        id = "git_identity"
+        name = "Git user.name / user.email"
+        status = "WARN"
+        message = "git not in PATH yet (will be installed in Step 1)"
+    }
+    Write-Host "  [i] Git identity: skipped (git not in PATH yet)" -ForegroundColor Gray
+}
+
+# 9. Output Report JSON (to both .run/reports/diagnose-report.json and .run/diagnose-report.json)
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PlatformRoot = Split-Path -Parent (Split-Path -Parent $ScriptDir)
 

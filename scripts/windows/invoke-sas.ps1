@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     invoke-sas.ps1 - SAS Batch Execution Wrapper for Windows & Cursor Tasks
 .DESCRIPTION
