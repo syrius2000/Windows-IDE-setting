@@ -58,7 +58,11 @@ graph TD
 ---
 
 ### ② 【導入済みの方】新規解析テーマ（Case Project）の生成
-解析テーマ（例: 泌尿器科、ポンペ病等）ごとに、独立したGitリポジトリを1コマンドで生成します：
+解析テーマ（例: 泌尿器科、ポンペ病等）ごとに、独立したGitリポジトリを1コマンドで生成します。
+
+**実行場所**: 本リポジトリ（プラットフォーム）のルートディレクトリ。  
+**既定の生成先**: `%USERPROFILE%\Programing\RWD-Projects\<Name>`（変更する場合は `-DestinationRoot`）。  
+**Git 身元**: `git config --global user.name` / `user.email` が未設定だと初回コミットがスキップされます（[FAQ](docs/windows-bootstrap-guide.md#q6-case-project-はできたがinitial-git-commitがスキップされる) / [Troubleshoot §10](docs/windows-troubleshooting.md#10-git-身元未設定で初回コミットがスキップされる)）。
 
 ```powershell
 # 【パターン A】 Python 主解析（SAS不要・推奨）
@@ -110,19 +114,23 @@ python3 ./scripts/macos/test-odbc.py --dsn rwd_research_db
 
 - 🚀 [クリーン Windows 11 初期セットアップ手順書](docs/windows-bootstrap-guide.md)
 - 🧰 [Windows 初回セットアップ Troubleshoot](docs/windows-troubleshooting.md)
-
-macOS で `scripts/windows/*.ps1` を編集したあとは、Push 前に BOM 検査を実行してください（CI の Windows static gate でも同じ検査が走ります）:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Assert-Utf8Bom.ps1
-```
 - 📖 [初心者向けチートシート](docs/beginner-cheatsheet.md)
 - 🛠️ [日常運用マニュアル](docs/daily-operations.md)
-- 📋 [ソフトウェア構成表（BOM）](docs/software-matrix.md)
+- 🌱 [Git基本ワークフロー](docs/git-basic-workflow.md)
+- 🤖 [Cursor AIプロンプトレシピ集](docs/ai-prompt-recipes.md)
+- 📋 [ソフトウェア構成表（Software Bill of Materials）](docs/software-matrix.md)
 - 🔤 [SAS CP932 文字コード管理マニュアル](docs/sas-cp932.md)
 - 🔒 [MySQL 8.0 読取専用・ODBC接続基準](docs/mysql-readonly.md)
 - 🛡️ [AI データ境界マトリクス](docs/ai-data-boundary.md)
 - 🚨 [インシデント対応手順書](docs/incident-response.md)
+
+### 開発者向け（macOS で Windows スクリプトを編集する場合）
+
+Push 前に BOM 検査を実行してください（CI の Windows static gate でも同じ検査が走ります）:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Assert-Utf8Bom.ps1
+```
 
 ### GitHubを使い始めるタイミング
 
@@ -140,4 +148,4 @@ GitHubを使わない期間は、`commit`までで作業を完結できます。
 
 1. **実RWDの物理隔離**: 実データおよび個人情報はGit管理対象外の保護領域（`C:\RWD_DATA\` 等）に配置します。
 2. **`outputs/` の分離**: 中間データは `outputs/private/`（Git除外）、公開成果物は人手レビュー（`release-manifest.yml`）を経て `outputs/release/` に配置します。
-3. **文字コード厳守**: SASプログラム（`src/sas-cp932/`）はCP932、その他はUTF-8で完全分離します。
+3. **文字コード厳守**: SASプログラム（`src/sas-cp932/`）はCP932、Case Project 内の Python / R / TypeScript / Markdown は UTF-8（BOMなし）で分離します。例外として、プラットフォームの `scripts/windows/*.ps1`・`scripts/project/*.ps1`・`Setup-Windows.bat` は Windows PowerShell 5.1 互換のため **UTF-8（BOMあり）** 必須です（詳細は [AGENTS.md](AGENTS.md)）。

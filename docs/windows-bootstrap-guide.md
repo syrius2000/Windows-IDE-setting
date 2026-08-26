@@ -20,7 +20,7 @@
 
 ### ステップ 1: 本リポジトリの配置
 
-1. GitHub または学内共有フォルダから、本リポジトリのZIPファイルをダウンロードします。
+1. 配布 ZIP または学内共有から本リポジトリを入手します（GitHub アカウントは不要です）。
 2. ZIPファイルを右クリックして「すべて展開」を選択し、任意の場所（例: `C:\RWD-Platform` または `C:\Programing\Windows-IDE-setting`）に展開します。
 
 ---
@@ -63,7 +63,9 @@
 
 ## 🎯 セットアップ完了後: 最初の解析案件（Case Project）を作成する
 
-環境構築が完了したら、主解析言語に応じたコマンドで新しい解析案件を1発生成できます：
+環境構築が完了したら、**本リポジトリ（プラットフォーム）のルート**で主解析言語に応じたコマンドを実行します。  
+既定の生成先は `%USERPROFILE%\Programing\RWD-Projects\<Name>`（変更は `-DestinationRoot`）。  
+`git config --global user.name` / `user.email` が未設定だと初回コミットがスキップされます（[Q6](#q6-case-project-はできたがinitial-git-commitがスキップされる) / [Troubleshoot §10](windows-troubleshooting.md#10-git-身元未設定で初回コミットがスキップされる)）。
 
 ### パターン A: Python 主解析プロジェクト（SAS不要・推奨）
 ```powershell
@@ -130,3 +132,11 @@
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Assert-Utf8Bom.ps1
 ```
+
+---
+
+## 📚 関連ドキュメント
+
+- [ソフトウェア構成表（Software Bill of Materials）](software-matrix.md)
+- [初心者向けチートシート](beginner-cheatsheet.md)
+- [日常運用マニュアル](daily-operations.md)

@@ -16,8 +16,9 @@ GitHubアカウントがない間は、`commit`までを使います。`push`と
 
 ## 2. GitHubなしで始めるローカル運用
 
-Case Projectを作成して`Y`を選ぶと、プロジェクト内にローカルGitリポジトリが作られます。以後、Cursorのターミナルで次を確認します。
+初回コミットには `git config --global user.name` / `user.email` が必要です。未設定だと Case 作成時の Initial commit がスキップされます（[bootstrap FAQ Q6](windows-bootstrap-guide.md#q6-case-project-はできたがinitial-git-commitがスキップされる) / [Troubleshoot §10](windows-troubleshooting.md#10-git-身元未設定で初回コミットがスキップされる)）。
 
+Case Projectを作成して`Y`を選ぶと、プロジェクト内にローカルGitリポジトリが作られます。以後、Cursorのターミナルで次を確認します。
 ```powershell
 git status
 git log --oneline -5

@@ -34,6 +34,10 @@ PCに一括で解析環境を導入する場合（**SASの有無にかかわら�
 
 ## 📦 3. 新規解析テーマ（Case Project）の作成
 
+**実行場所**: プラットフォームリポジトリのルート。  
+**既定の生成先**: `%USERPROFILE%\Programing\RWD-Projects\<Name>`（変更は `-DestinationRoot`）。  
+**Git 身元**: `user.name` / `user.email` 未設定だと初回コミットがスキップされます（[FAQ Q6](windows-bootstrap-guide.md#q6-case-project-はできたがinitial-git-commitがスキップされる) / [Troubleshoot §10](windows-troubleshooting.md#10-git-身元未設定で初回コミットがスキップされる)）。
+
 主解析言語（Python / R / SAS）に応じてコマンドを実行します：
 
 ```powershell
@@ -110,3 +114,12 @@ uv run python scripts/validate-project.py --project-dir .
    - AIにコードを聞くときは、必ず `data/synthetic/` の合成データを使って質問してください。
 3. **SASファイル（`src/sas-cp932/`）の文字コードをUTF-8に変えない**:
    - Cursorの設定により自動でCP932として開かれます。文字コードを変更して保存しないでください。
+
+---
+
+## 📚 関連ドキュメント
+
+- [Windows 初回セットアップ Troubleshoot](windows-troubleshooting.md)
+- [クリーン Windows 11 初期セットアップ手順書](windows-bootstrap-guide.md)
+- [日常運用マニュアル](daily-operations.md)
+- [ソフトウェア構成表](software-matrix.md)

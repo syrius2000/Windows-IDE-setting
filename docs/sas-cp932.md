@@ -9,6 +9,7 @@
 - 日本の医療機関・大学で運用されているSAS Foundation環境は、長年の資産互換性のため **CP932** を基本エンコーディングとしています。
 - 一方、Python, R, TypeScript, Markdown, JSON は **UTF-8 (BOMなし)** が現代の標準です。
 - UTF-8対応エディタで不用意に `.sas` を開いて保存すると、日本語コメント、変数ラベル、フォーマット名が文字化けし、SAS実行時に構文エラーを引き起こします。
+- 脚注: プラットフォーム側の `scripts/windows/*.ps1`・`scripts/project/*.ps1`・`Setup-Windows.bat` は Windows PowerShell 5.1 互換のため **UTF-8（BOMあり）** 例外です（詳細は [AGENTS.md](../AGENTS.md)）。
 
 ---
 

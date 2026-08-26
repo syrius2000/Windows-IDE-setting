@@ -143,12 +143,17 @@ Write-Host @"
   [✓] 合成データ検証: 全言語E2E動作確認済み
 
 【次のステップ: 最初の解析案件（Case Project）を作成する】
-PowerShell で以下のコマンドを実行して、新しい解析テーマを開始できます:
+プラットフォームリポジトリのルートで、主解析言語に応じて実行してください
+（既定生成先: %USERPROFILE%\Programing\RWD-Projects\<Name>）:
 
-  .\scripts\project\New-AnalysisProject.ps1 `
-      -Name "case-urology" `
-      -Profile "windows-standard" `
-      -DataClassification "deidentified"
+  # パターン A: Python 主解析（推奨）
+  .\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "python"
+
+  # パターン B: R 主解析（推奨）
+  .\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "r"
+
+  # パターン C: 既存SAS併用（SAS保有時のみ）
+  .\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "sas" -SasEncoding "cp932"
 
 【ドキュメント案内】
 - 初心者向けチートシート: docs/beginner-cheatsheet.md
