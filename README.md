@@ -2,7 +2,7 @@
 
 [![OpenSpec](https://img.shields.io/badge/OpenSpec-spec--driven-blue)](openspec/)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![R](https://img.shields.io/badge/R-4.4.1-blue.svg)](https://www.r-project.org/)
+[![R](https://img.shields.io/badge/R-4.6.1-blue.svg)](https://www.r-project.org/)
 [![SAS](https://img.shields.io/badge/SAS-CP932%20(Optional)-green.svg)](https://www.sas.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
