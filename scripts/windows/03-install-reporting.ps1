@@ -72,12 +72,21 @@ if ($pnpmAvailable) {
 }
 
 # 3. Install/Verify TypeScript & Global Slidev CLI support
-Log-Message "  [...] Installing TypeScript & Slidev CLI global support..." "Yellow"
-try {
+$GlobalCommands = @("slidev", "tsc", "ts-node")
+$MissingGlobalCommands = @($GlobalCommands | Where-Object {
+    -not (Get-Command $_ -ErrorAction SilentlyContinue)
+})
+if ($MissingGlobalCommands.Count -eq 0) {
+    Log-Message "  [✓] Slidev, TypeScript, and ts-node already available; skipping global reinstall." "Green"
+} else {
+    Log-Message "  [...] Installing missing reporting tools ($($MissingGlobalCommands -join ', '))..." "Yellow"
     & pnpm add -g @slidev/cli @slidev/theme-default typescript ts-node 2>$null
-    Log-Message "  [✓] Slidev CLI & TypeScript tooling verified." "Green"
-} catch {
-    Log-Message "  [INFO] Global package installation skipped (can run locally per project)." "Yellow"
+    if ($LASTEXITCODE -ne 0) {
+        Log-Message "  [✗] Global reporting tool installation failed (exit $LASTEXITCODE)." "Red"
+        $FailedTools += "Slidev/TypeScript"
+    } else {
+        Log-Message "  [✓] Slidev & TypeScript tooling installed." "Green"
+    }
 }
 
 if ($FailedTools.Count -gt 0) {
