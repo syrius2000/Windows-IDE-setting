@@ -124,6 +124,7 @@ try {
         "--trust",
         "-d", "project_id=$Name",
         "-d", "project_title=$Name",
+        "-d", "profile=$Profile",
         "-d", "data_classification=$DataClassification",
         "-d", "primary_language=$PrimaryLanguage",
         "-d", "sas_encoding=$SasEncoding"
