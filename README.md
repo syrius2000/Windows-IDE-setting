@@ -53,6 +53,10 @@ graph TD
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
   .\scripts\windows\Setup-WindowsEnvironment.ps1
   ```
+
+#### セットアップの再実行
+
+`Setup-Windows.bat` は、環境確認や修復のために繰り返し実行できます。既に利用可能なツール、R 4.6.1、グローバル開発ツール、Cursor拡張機能は検出してスキップし、不足しているものだけを導入します。最後の稼働検証（Step 05）は毎回実行されます。
 - 📖 詳細は [クリーン Windows 11 初期セットアップ手順書](docs/windows-bootstrap-guide.md) をご覧ください。
 
 ---
