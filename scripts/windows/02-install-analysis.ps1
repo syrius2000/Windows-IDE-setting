@@ -119,11 +119,16 @@ if (-not $duckdbCmd) {
 $RVersion = "4.6.1"
 $RInstallerUrl = "https://cran.r-project.org/bin/windows/base/R-4.6.1-win.exe"
 $RInstallDir = Join-Path $env:ProgramFiles "R\\R-$RVersion"
-$RBinDir = Join-Path $RInstallDir "bin"
-$RExe = Join-Path $RBinDir "R.exe"
-$RscriptExe = Join-Path $RBinDir "Rscript.exe"
+$RBinCandidates = @(
+    (Join-Path $RInstallDir "bin\\x64"),
+    (Join-Path $RInstallDir "bin")
+)
+$RBinDir = $RBinCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+$RExeCandidates = $RBinCandidates | ForEach-Object { Join-Path $_ "R.exe" }
+$RscriptCandidates = $RBinCandidates | ForEach-Object { Join-Path $_ "Rscript.exe" }
+$RAlreadyInstalled = @($RExeCandidates | Where-Object { Test-Path -LiteralPath $_ }).Count -gt 0
 
-if (-not (Test-Path -LiteralPath $RExe)) {
+if (-not $RAlreadyInstalled) {
     $RInstaller = Join-Path $env:TEMP "R-$RVersion-win.exe"
     try {
         Log-Message "  [...] Downloading R $RVersion from official CRAN..." "Yellow"
@@ -149,9 +154,11 @@ if (-not (Test-Path -LiteralPath $RExe)) {
     Log-Message "  [✓] R $RVersion is already installed ($RExe)." "Green"
 }
 
-if (Test-Path -LiteralPath $RBinDir) {
+$RBinDir = $RBinCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+$RscriptExe = $RscriptCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if ($RBinDir -and (Test-Path -LiteralPath $RBinDir)) {
     if ($env:Path -notlike "*$RBinDir*") { $env:Path = "$RBinDir;$env:Path" }
-    if (Test-Path -LiteralPath $RscriptExe) {
+    if ($RscriptExe) {
         Log-Message "  [✓] R $RVersion is operational ($RscriptExe)." "Green"
     } else {
         Log-Message "  [✗] Rscript.exe was not found after installing R $RVersion." "Red"
