@@ -114,6 +114,10 @@ python3 ./scripts/macos/test-odbc.py --dsn rwd_research_db
 
 ---
 
+## 🧩 Agent Skills の配備
+
+リポジトリで管理するSkillsの正本は **`.agents/skills/`** です。Case Project生成時に、このディレクトリの内容が生成先の `.agents/skills/` へコピーされます。Cursor固有のプロジェクトルールは引き続き `.cursor/rules/` で管理します。
+
 ## 📚 ドキュメント一覧
 
 - 🚀 [クリーン Windows 11 初期セットアップ手順書](docs/windows-bootstrap-guide.md)
