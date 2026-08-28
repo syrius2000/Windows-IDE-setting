@@ -72,12 +72,31 @@ if ($uvAvailable) {
         $FailedTools += "Python 3.12"
     }
 
-    # 3. Install Pinned Global Tools via uv tool
-    Log-Message "  [...] Installing pinned Copier (9.4.1), Ruff, and pre-commit..." "Yellow"
-    & uv tool install "copier==9.4.1" --force | Out-Null
-    & uv tool install "ruff" --force | Out-Null
-    & uv tool install "pre-commit" --force | Out-Null
-    Log-Message "  [✓] Copier (9.4.1), Ruff, and pre-commit installed via uv tool." "Green"
+    # 3. Install Pinned Global Tools via uv tool (skip when command already exists)
+    function Ensure-UvTool {
+        param(
+            [Parameter(Mandatory = $true)][string]$Package,
+            [Parameter(Mandatory = $true)][string]$Command,
+            [Parameter(Mandatory = $true)][string]$DisplayName
+        )
+        $existing = Get-Command $Command -ErrorAction SilentlyContinue
+        if ($existing) {
+            Log-Message "  [✓] $DisplayName already available; skipping reinstall ($($existing.Source))." "Green"
+            return
+        }
+        Log-Message "  [...] Installing $DisplayName via uv tool..." "Yellow"
+        & uv tool install $Package | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Log-Message "  [✗] Failed to install $DisplayName (exit $LASTEXITCODE)." "Red"
+            $script:FailedTools += $DisplayName
+        } else {
+            Log-Message "  [✓] $DisplayName installed via uv tool." "Green"
+        }
+    }
+
+    Ensure-UvTool -Package "copier==9.4.1" -Command "copier" -DisplayName "Copier 9.4.1"
+    Ensure-UvTool -Package "ruff" -Command "ruff" -DisplayName "Ruff"
+    Ensure-UvTool -Package "pre-commit" -Command "pre-commit" -DisplayName "pre-commit"
 }
 
 # 4. Install Quarto CLI
