@@ -92,6 +92,7 @@ $Extensions = @(
     "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint"
 )
+$FailedExtensions = @()
 
 if ($CursorCmd) {
     Log-Message "  [✓] Cursor CLI operational: $($CursorCmd.Source)" "Green"
@@ -108,6 +109,7 @@ if ($CursorCmd) {
             Log-Message "  [✓] Extension configured: $ext" "Green"
         } else {
             Log-Message "  [✗] Extension installation failed: $ext (exit $LASTEXITCODE)" "Red"
+            $FailedExtensions += $ext
         }
     }
 } else {
@@ -155,6 +157,12 @@ $UpdatedJson = $Settings | ConvertTo-Json -Depth 5
 [System.IO.File]::WriteAllText($SettingsFile, $UpdatedJson, [System.Text.Encoding]::UTF8)
 
 Log-Message "  [✓] Cursor User settings updated at: $SettingsFile" "Green"
+if ($FailedExtensions.Count -gt 0) {
+    Log-Message "`n[ERROR] Cursor extensions failed: $($FailedExtensions -join ', ')" "Red"
+    Log-Message "Step 4 Failed. Check log at: $LogFile" "Red"
+    exit 1
+}
+
 Log-Message "`nStep 4 Complete. Check log at: $LogFile" "Cyan"
 Log-Message "========================================================`n" "Cyan"
 exit 0
