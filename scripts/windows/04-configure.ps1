@@ -95,10 +95,20 @@ $Extensions = @(
 
 if ($CursorCmd) {
     Log-Message "  [✓] Cursor CLI operational: $($CursorCmd.Source)" "Green"
+    $InstalledExtensions = @(& cursor --list-extensions 2>$null)
+    $ListExitCode = $LASTEXITCODE
     foreach ($ext in $Extensions) {
+        if ($ListExitCode -eq 0 -and ($InstalledExtensions -contains $ext)) {
+            Log-Message "  [✓] Extension already installed; skipping: $ext" "Green"
+            continue
+        }
         Log-Message "  [...] Installing extension: $ext..." "Yellow"
         & cursor --install-extension $ext 2>$null | Out-Null
-        Log-Message "  [✓] Extension: $ext configured." "Green"
+        if ($LASTEXITCODE -eq 0) {
+            Log-Message "  [✓] Extension configured: $ext" "Green"
+        } else {
+            Log-Message "  [✗] Extension installation failed: $ext (exit $LASTEXITCODE)" "Red"
+        }
     }
 } else {
     Log-Message "  [INFO] Cursor CLI not available in PATH. Settings.json will be configured; extensions can be installed via Cursor GUI." "Yellow"
