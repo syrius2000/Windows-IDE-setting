@@ -118,9 +118,9 @@ if (-not $duckdbCmd) {
 # CRAN URL is intentionally pinned so the installed R version is reproducible.
 $RVersion = "4.6.1"
 $RInstallerUrl = "https://cran.r-project.org/bin/windows/base/R-4.6.1-win.exe"
-$RInstallDir = Join-Path $env:ProgramFiles "R\\R-$RVersion"
+$RInstallDir = Join-Path $env:ProgramFiles "R\R-$RVersion"
 $RBinCandidates = @(
-    (Join-Path $RInstallDir "bin\\x64"),
+    (Join-Path $RInstallDir "bin\x64"),
     (Join-Path $RInstallDir "bin")
 )
 $RBinDir = $RBinCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
@@ -174,9 +174,9 @@ function Refresh-SessionPath {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" +
                 [System.Environment]::GetEnvironmentVariable("Path", "Machine")
     $extra = @(
-        "${env:ProgramFiles}\\Rig",
-        "${env:LOCALAPPDATA}\\Programs\\Rig",
-        "${env:USERPROFILE}\\.local\\bin"
+        "${env:ProgramFiles}\Rig",
+        "${env:LOCALAPPDATA}\Programs\Rig",
+        "${env:USERPROFILE}\.local\bin"
     ) | Where-Object { Test-Path $_ }
     foreach ($p in $extra) {
         if ($env:Path -notlike "*$p*") { $env:Path = "$p;$env:Path" }
