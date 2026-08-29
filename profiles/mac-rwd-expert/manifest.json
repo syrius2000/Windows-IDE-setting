@@ -21,7 +21,7 @@
     ],
     "python": {
       "installer": "uv",
-      "python_version": "3.12",
+      "python_version": "3.12.14",
       "tools": [
         { "name": "copier", "version": "9.4.1", "install_cmd": "uv tool install \"copier==9.4.1\"" },
         { "name": "ruff", "version": "0.8+", "install_cmd": "uv tool install ruff" },
