@@ -45,6 +45,10 @@ jobs:
             Write-Error "scripts/windows/02-install-analysis.ps1 must install R from official CRAN"
             exit 1
           }
+          if ($analysis -notmatch 'Posit\.rig') {
+            Write-Error "scripts/windows/02-install-analysis.ps1 must reference Posit.rig for Rtools via rig"
+            exit 1
+          }
           # Ban obsolete WinGet id usage (comments saying it does not exist are OK)
           if ($analysis -match '(?i)--id["\s,]+RProject\.rig|winget install[^\r\n]*RProject\.rig') {
             Write-Error "scripts/windows/02-install-analysis.ps1 must not install RProject.rig"

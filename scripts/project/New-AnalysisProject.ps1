@@ -205,7 +205,7 @@ try {
     Write-Host "`n[3/6] Project Generated Successfully:" -ForegroundColor Green
     Write-Host "  - Root: $TargetDir"
     Write-Host "  - Structure: src/, sql/, reports/, outputs/private/, outputs/release/"
-    Write-Host "  - Governance: PROJECT.yml, .cursor/rules/, .agents/skills/, .gitignore, tasks.json"
+    Write-Host "  - Governance: PROJECT.yml, .cursor/rules/, .agents/skills/, .pre-commit-config.yaml, .gitignore, tasks.json"
 
     # 7. User Confirmation for Git Initialization
     $ProceedWithGit = $true
@@ -233,9 +233,17 @@ try {
                 Write-Host "            git config --global user.email 'you@example.com'"
                 Write-Host "       Skipping automatic initial commit." -ForegroundColor Yellow
             } else {
-                & git add .gitignore .cursor .agents .vscode config data reports schemas sql src pyproject.toml package.json PROJECT.yml README.md AGENTS.md scripts | Out-Null
+                & git add .gitignore .pre-commit-config.yaml .cursor .agents .vscode config data reports schemas sql src pyproject.toml package.json PROJECT.yml README.md AGENTS.md scripts | Out-Null
                 & git commit -m "feat: initialize case project from template ($Name)" | Out-Null
                 Write-Host "[5/6] Initial Git commit created." -ForegroundColor Green
+
+                $PreCommitCmd = Get-Command "pre-commit" -ErrorAction SilentlyContinue
+                if ($PreCommitCmd -and (Test-Path -LiteralPath ".pre-commit-config.yaml")) {
+                    & pre-commit install 2>$null | Out-Null
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Host "[INFO] pre-commit hooks installed for secret scanning." -ForegroundColor Gray
+                    }
+                }
             }
         } finally {
             Pop-Location

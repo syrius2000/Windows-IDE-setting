@@ -3,7 +3,7 @@
     04-configure.ps1 - Configure Cursor IDE Extensions and Global Settings
 .DESCRIPTION
     Detects Cursor IDE from known paths / WinGet, installs recommended extensions
-    (Python, Jupyter, R, Quarto, Prettier, ESLint, EditorConfig), and configures
+    (Python, Jupyter, R, Quarto, Prettier, ESLint, EditorConfig), pre-commit/Gitleaks hooks,
     User settings.json for SAS CP932 and UTF-8 encoding support.
 #>
 
@@ -11,7 +11,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$LogDir = Join-Path (Split-Path -Parent (Split-Path -Parent $ScriptDir)) ".run\logs"
+$PlatformRoot = Split-Path -Parent (Split-Path -Parent $ScriptDir)
+$LogDir = Join-Path $PlatformRoot ".run\logs"
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 $LogFile = Join-Path $LogDir "configure.log"
 
@@ -157,6 +158,36 @@ $UpdatedJson = $Settings | ConvertTo-Json -Depth 5
 [System.IO.File]::WriteAllText($SettingsFile, $UpdatedJson, [System.Text.Encoding]::UTF8)
 
 Log-Message "  [✓] Cursor User settings updated at: $SettingsFile" "Green"
+
+# 4. Install pre-commit hooks when Gitleaks and config are available
+$PreCommitConfig = Join-Path $PlatformRoot ".pre-commit-config.yaml"
+$PreCommitCmd = Get-Command "pre-commit" -ErrorAction SilentlyContinue
+$GitleaksCmd = Get-Command "gitleaks" -ErrorAction SilentlyContinue
+if ($PreCommitCmd -and (Test-Path -LiteralPath $PreCommitConfig)) {
+    Log-Message "  [...] Installing pre-commit hooks for platform repository..." "Yellow"
+    Push-Location $PlatformRoot
+    try {
+        & pre-commit install 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Log-Message "  [✓] pre-commit hooks installed." "Green"
+        } else {
+            Log-Message "  [!] pre-commit install returned $LASTEXITCODE (non-fatal)." "Yellow"
+        }
+    } finally {
+        Pop-Location
+    }
+} elseif (-not $PreCommitCmd) {
+    Log-Message "  [INFO] pre-commit not in PATH; skipping hook installation." "Gray"
+} elseif (-not (Test-Path -LiteralPath $PreCommitConfig)) {
+    Log-Message "  [INFO] .pre-commit-config.yaml not found; skipping hook installation." "Gray"
+}
+
+if ($GitleaksCmd) {
+    Log-Message "  [✓] Gitleaks available for secret scanning ($($GitleaksCmd.Source))." "Green"
+} else {
+    Log-Message "  [INFO] Gitleaks not in PATH; install via Step 01 for secret scanning." "Gray"
+}
+
 if ($FailedExtensions.Count -gt 0) {
     Log-Message "`n[ERROR] Cursor extensions failed: $($FailedExtensions -join ', ')" "Red"
     Log-Message "Step 4 Failed. Check log at: $LogFile" "Red"
