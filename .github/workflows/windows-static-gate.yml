@@ -62,4 +62,12 @@ jobs:
             Write-Error "docs/software-matrix.md must not recommend installing RProject.rig"
             exit 1
           }
+          if ($analysis -notmatch '3\.12\.14') {
+            Write-Error "scripts/windows/02-install-analysis.ps1 must pin Python 3.12.14"
+            exit 1
+          }
+          if ($matrix -notmatch '3\.12\.14') {
+            Write-Error "docs/software-matrix.md must pin Python 3.12.14"
+            exit 1
+          }
           Write-Host "Windows R install policy gate PASSED."

@@ -16,7 +16,7 @@ Windows 11環境において、IT初心者の統計専門家が迷うことな�
 - **THEN** システムはエラー理由を明示してスクリプトを停止し、管理者昇格または情シス相談用の案内を表示する
 
 ### Requirement: WinGet優先＋統制公式フォールバックによるツール導入
-システムは、開発共通ツール（Terminal, PS7, Git, 7-Zip）、統計解析ツール（`uv`, Python 3.12, `rig`, R, Rtools, Quarto, DuckDB）、報告自動化ツール（Node.js LTS, `pnpm`, Slidev, PptxGenJS）をWinGet経由でサイレント導入し、WinGet失敗時は公式HTTPSインストーラーのハッシュ検証付きフォールバックを実行しなければならない（SHALL）。また、Copier固定バージョンを `uv tool` 経由で事前導入しなければならない（SHALL）。
+システムは、開発共通ツール（Terminal, PS7, Git, 7-Zip）、統計解析ツール（`uv`, Python 3.12.14, `rig`, R, Rtools, Quarto, DuckDB）、報告自動化ツール（Node.js LTS, `pnpm`, Slidev, PptxGenJS）をWinGet経由でサイレント導入し、WinGet失敗時は公式HTTPSインストーラーのハッシュ検証付きフォールバックを実行しなければならない（SHALL）。また、Copier固定バージョンを `uv tool` 経由で事前導入しなければならない（SHALL）。
 
 #### Scenario: WinGetによるサイレント一括導入
 - **WHEN** `01-install-common.ps1` 〜 `03-install-reporting.ps1` が順次実行された時

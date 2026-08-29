@@ -1,14 +1,14 @@
 # 阪大・統計専門家向け RWD 解析・AI Agent 開発環境基盤
 
 [![OpenSpec](https://img.shields.io/badge/OpenSpec-spec--driven-blue)](openspec/)
-[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.12.14-blue.svg)](https://www.python.org/)
 [![R](https://img.shields.io/badge/R-4.6.1-blue.svg)](https://www.r-project.org/)
 [![SAS](https://img.shields.io/badge/SAS-CP932%20(Optional)-green.svg)](https://www.sas.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 既存のSAS資産（CP932）やOffice報告業務を維持しつつ、Python、R、Git、AI Agent（Cursor / ローカルLLM）を活用したモダンで再現性の高いReal World Data（RWD）解析基盤です。
 
-> 💡 **SASをお持ちでない方へ**: 本基盤は **SASが未導入のPCでも、Python 3.12 / R 4.4 / DuckDB / Quarto による最新の解析環境を100%利用可能** です。
+> 💡 **SASをお持ちでない方へ**: 本基盤は **SASが未導入のPCでも、Python 3.12.14 / R 4.6.1 / DuckDB / Quarto による最新の解析環境を100%利用可能** です。
 
 > 🧭 **GitHubアカウントをお持ちでない方へ**: 初期セットアップとローカルのCase Project作成には、GitHubアカウントは必要ありません。まずは配布されたZIPを展開し、PC内で解析を始められます。GitHubは、共同作業やバックアップが必要になった段階で追加すれば十分です。
 
@@ -45,7 +45,7 @@ graph TD
 ## 🧭 利用フェーズ別ナビゲーション
 
 ### ① 【初めて使う方】Windows 11 初期環境セットアップ
-クリーンな Windows 11 PC に解析ツール群（Git, uv, Python 3.12, R 4.4, Quarto, DuckDB, Node.js, Cursor設定）を一括自動導入します：
+クリーンな Windows 11 PC に解析ツール群（Git, uv, Python 3.12.14, R 4.6.1, Quarto, DuckDB, Node.js, Cursor設定）を一括自動導入します：
 
 - **ワンクリック実行（推奨）**: 本リポジトリを展開し、ルートの **`Setup-Windows.bat`** を右クリック → **「管理者として実行」**
 - **PowerShell から実行**:

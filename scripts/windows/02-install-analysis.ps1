@@ -2,7 +2,7 @@
 .SYNOPSIS
     02-install-analysis.ps1 - Install Statistical & RWD Analysis Toolchain on Windows 11
 .DESCRIPTION
-    Installs uv, Python 3.12, pinned Copier (9.4.1), Quarto CLI, DuckDB CLI,
+    Installs uv, Python 3.12.14, pinned Copier (9.4.1), Quarto CLI, DuckDB CLI,
     and R 4.6.1 from the official CRAN Windows installer; installs rig for Rtools management.
 #>
 
@@ -26,6 +26,7 @@ Log-Message "  Step 2: Installing Statistical Analysis Toolchain" "Cyan"
 Log-Message "========================================================" "Cyan"
 
 $FailedTools = @()
+$PythonVersion = "3.12.14"
 
 # 1. Install Astral uv
 $uvCmd = Get-Command "uv" -ErrorAction SilentlyContinue
@@ -61,15 +62,16 @@ if ($uvAvailable) {
     $FailedTools += "uv"
 }
 
-# 2. Install Python 3.12 via uv
+# 2. Install pinned Python via uv
 if ($uvAvailable) {
-    Log-Message "  [...] Setting up Python 3.12 via uv..." "Yellow"
-    & uv python install 3.12
+    Log-Message "  [...] Setting up Python $PythonVersion via uv..." "Yellow"
+    & uv python install $PythonVersion
     if ($LASTEXITCODE -eq 0) {
-        Log-Message "  [✓] Python 3.12 installed." "Green"
+        $pyVer = (& uv run --python $PythonVersion python --version) 2>$null
+        Log-Message "  [✓] Python $PythonVersion installed ($pyVer)." "Green"
     } else {
-        Log-Message "  [✗] Failed to install Python 3.12 via uv." "Red"
-        $FailedTools += "Python 3.12"
+        Log-Message "  [✗] Failed to install Python $PythonVersion via uv." "Red"
+        $FailedTools += "Python $PythonVersion"
     }
 
     # 3. Install Pinned Global Tools via uv tool (skip when command already exists)

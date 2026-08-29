@@ -49,7 +49,7 @@
 ```text
 [1/6] 00-diagnose.ps1         # ハードウェア、OS、管理者権限、WinGetの非破壊診断
 [2/6] 01-install-common.ps1   # Windows Terminal, PowerShell 7, Git, 7-Zip のサイレント導入
-[3/6] 02-install-analysis.ps1 # uv, Python 3.12, Copier 9.4.1, rig, R 4.4, Quarto, DuckDB の導入
+[3/6] 02-install-analysis.ps1 # uv, Python 3.12.14, Copier 9.4.1, rig, R 4.6.1, Quarto, DuckDB の導入
 [4/6] 03-install-reporting.ps1# Node.js LTS, pnpm, Slidev/TypeScript 実行環境の導入
 [5/6] 04-configure.ps1        # Cursor設定・拡張機能の一括導入、CP932/UTF-8マッピング構成
 [6/6] 05-verify.ps1           # 合成データを用いたE2E全言語パイプライン自動検証
@@ -96,7 +96,7 @@
 ## ❓ トラブルシューティング ＆ FAQ
 
 ### Q1. SASを持っていませんが、問題なく使えますか？
-- **回答**: はい、全く問題ありません。セットアップスクリプトはSASがなくてもPython 3.12、R 4.4、DuckDB、Quarto等のモダン統計環境を100%正常にセットアップします。
+- **回答**: はい、全く問題ありません。セットアップスクリプトはSASがなくてもPython 3.12.14、R 4.6.1、DuckDB、Quarto等のモダン統計環境を100%正常にセットアップします。
 
 ### Q2. `スクリプトの実行が無効になっているため...` というエラーが出る
 - **対処法**: PowerShellで一時的に実行ポリシーを解除します：

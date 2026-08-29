@@ -3,7 +3,7 @@
     Setup-WindowsEnvironment.ps1 - Master Setup Orchestrator for Clean Windows 11
 .DESCRIPTION
     Fully automated, beginner-friendly setup script that installs and configures
-    all required tools (Terminal, PowerShell 7, Git, uv, Python 3.12, Copier 9.4.1,
+    all required tools (Terminal, PowerShell 7, Git, uv, Python 3.12.14, Copier 9.4.1,
     rig, R 4.4, Quarto, DuckDB, Node.js, pnpm, Cursor IDE, CP932/UTF-8 mappings)
     and verifies the entire environment with synthetic datasets.
     Aggregates failures and halts safely if any step fails.
@@ -41,7 +41,7 @@ if (-not $IsAdmin) {
 $Steps = @(
     @{ id = "00"; name = "環境 / ハードウェア非破壊診断"; script = "00-diagnose.ps1" },
     @{ id = "01"; name = "共通開発ツール導入 (Terminal, PS7, Git, 7-Zip, Gitleaks)"; script = "01-install-common.ps1" },
-    @{ id = "02"; name = "統計・RWD解析スタック導入 (uv, Python 3.12, Copier, R 4.6.1, rig/Rtools, Quarto, DuckDB)"; script = "02-install-analysis.ps1" },
+    @{ id = "02"; name = "統計・RWD解析スタック導入 (uv, Python 3.12.14, Copier, R 4.6.1, rig/Rtools, Quarto, DuckDB)"; script = "02-install-analysis.ps1" },
     @{ id = "03"; name = "報告・スライドスタック導入 (Node.js, pnpm, TypeScript, Slidev)"; script = "03-install-reporting.ps1" },
     @{ id = "04"; name = "Cursor IDE 設定 / 拡張機能・pre-commit・CP932マッピング構成"; script = "04-configure.ps1" },
     @{ id = "05"; name = "全ツール稼働 / 合成データエンドツーエンド自動検証"; script = "05-verify.ps1" }
@@ -137,7 +137,7 @@ Write-Host @"
 
 【導入完了スタック】
   [✓] 共通ツール: Windows Terminal, PowerShell 7, Git, 7-Zip
-  [✓] 統計・解析: uv, Python 3.12, Copier 9.4.1, rig, R 4.4, Quarto, DuckDB
+  [✓] 統計・解析: uv, Python 3.12.14, Copier 9.4.1, rig, R 4.6.1, Quarto, DuckDB
   [✓] 報告・スライド: Node.js LTS, pnpm, Slidev, PptxGenJS
   [✓] AI Agent IDE: Cursor, 推奨拡張機能, CP932/UTF-8 マッピング設定
   [✓] 合成データ検証: 全言語E2E動作確認済み

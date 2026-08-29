@@ -9,7 +9,7 @@
 PCに一括で解析環境を導入する場合（**SASの有無にかかわらず実行可能**）：
 
 1. 本リポジトリを展開し、フォルダ内の **`Setup-Windows.bat`** を右クリックして **「管理者として実行」** します。
-2. 自動的に WinGet, Git, Python 3.12, R 4.4, Quarto, DuckDB, Node.js, Cursor設定が完了します。
+2. 自動的に WinGet, Git, Python 3.12.14, R 4.6.1, Quarto, DuckDB, Node.js, Cursor設定が完了します。
 3. （詳しい手順: [クリーン Windows 11 初期セットアップ手順書](windows-bootstrap-guide.md)）
 
 ### GitHubアカウントがない場合
