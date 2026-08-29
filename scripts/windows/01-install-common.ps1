@@ -2,7 +2,7 @@
 .SYNOPSIS
     01-install-common.ps1 - Install Common Core Developer Tools on Windows 11
 .DESCRIPTION
-    Installs Windows Terminal, PowerShell 7, Git for Windows, and 7-Zip via WinGet
+    Installs Windows Terminal, PowerShell 7, Git for Windows, 7-Zip, and Gitleaks via WinGet
     with silent flags and license agreement acceptance.
     Treats "already installed / no upgrade" WinGet codes as success, and detects
     tools by PATH plus common install directories (7-Zip is often not on PATH).
@@ -92,6 +92,16 @@ $Packages = @(
             "${env:ProgramFiles(x86)}\7-Zip\7z.exe"
         )
         # Convenience only for archive ops; not required for Python/R analysis core.
+        Optional = $true
+    },
+    @{
+        Id = "Gitleaks.Gitleaks"
+        Name = "Gitleaks"
+        Cmd = "gitleaks"
+        Candidates = @(
+            "${env:LOCALAPPDATA}\Microsoft\WinGet\Links\gitleaks.exe"
+        )
+        # Secret scanning for pre-commit; failure is non-fatal for core analysis setup.
         Optional = $true
     }
 )

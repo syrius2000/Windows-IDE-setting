@@ -3,7 +3,7 @@
     02-install-analysis.ps1 - Install Statistical & RWD Analysis Toolchain on Windows 11
 .DESCRIPTION
     Installs uv, Python 3.12, pinned Copier (9.4.1), Quarto CLI, DuckDB CLI,
-    and R 4.6.1 from the official CRAN Windows installer; optionally adds Rtools via rig.
+    and R 4.6.1 from the official CRAN Windows installer; installs rig for Rtools management.
 #>
 
 Set-StrictMode -Version Latest
@@ -189,7 +189,7 @@ if ($RBinDir -and (Test-Path -LiteralPath $RBinDir)) {
     $FailedTools += "R $RVersion"
 }
 
-# 7. Optional Rtools installation through rig (R itself does not depend on rig).
+# 7. Install rig (Rtools manager only; R itself comes from CRAN above).
 function Refresh-SessionPath {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" +
                 [System.Environment]::GetEnvironmentVariable("Path", "Machine")
@@ -203,8 +203,51 @@ function Refresh-SessionPath {
     }
 }
 
+function Install-RigFromGitHub {
+    Log-Message "  [...] Falling back to GitHub release installer for rig..." "Yellow"
+    $installer = $null
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+        $api = Invoke-RestMethod -Uri "https://api.github.com/repos/r-lib/rig/releases/latest" -TimeoutSec 30
+        $asset = $api.assets | Where-Object { $_.name -match '^rig-windows-.*\.exe$' } | Select-Object -First 1
+        if (-not $asset) { throw "No Windows installer asset found in latest rig release." }
+        $installer = Join-Path $env:TEMP $asset.name
+        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installer -UseBasicParsing -TimeoutSec 120
+        $proc = Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
+        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+            throw "rig installer exited with code $($proc.ExitCode)"
+        }
+        return $true
+    } catch {
+        Log-Message "  [!] GitHub fallback for rig failed: $_" "Red"
+        return $false
+    } finally {
+        if ($installer -and (Test-Path $installer)) {
+            Remove-Item -Path $installer -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+$rigCmd = Get-Command "rig" -ErrorAction SilentlyContinue
+if (-not $rigCmd) {
+    Log-Message "  [...] Installing rig (Rtools manager) via WinGet (Posit.rig)..." "Yellow"
+    $proc = Start-Process -FilePath "winget" `
+        -ArgumentList "install", "--id", "Posit.rig", "--exact", "--source", "winget", "--silent", "--disable-interactivity", "--accept-package-agreements", "--accept-source-agreements" `
+        -Wait -PassThru -NoNewWindow
+    Refresh-SessionPath
+    if (-not (Get-Command "rig" -ErrorAction SilentlyContinue)) {
+        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+            Log-Message "  [!] WinGet Posit.rig returned exit code $($proc.ExitCode)." "Yellow"
+        }
+        [void](Install-RigFromGitHub)
+        Refresh-SessionPath
+    }
+}
+
+Refresh-SessionPath
 $rigCmd = Get-Command "rig" -ErrorAction SilentlyContinue
 if ($rigCmd) {
+    Log-Message "  [✓] rig operational ($($rigCmd.Source))." "Green"
     Log-Message "  [...] Adding matching Rtools via rig..." "Yellow"
     & rig add rtools
     if ($LASTEXITCODE -ne 0) {
@@ -213,7 +256,19 @@ if ($rigCmd) {
         Log-Message "  [✓] Rtools installed via rig." "Green"
     }
 } else {
-    Log-Message "  [i] rig not found; skipping optional Rtools installation." "Gray"
+    Log-Message "  [!] rig not found after WinGet/GitHub install; skipping Rtools." "Yellow"
+}
+
+# 8. Bootstrap common R packages used by the verification pipeline.
+if ($RscriptExe -and (Test-Path -LiteralPath $RscriptExe)) {
+    Log-Message "  [...] Ensuring baseline R package: survival..." "Yellow"
+    $rPkgScript = "if (!requireNamespace('survival', quietly=TRUE)) install.packages('survival', repos='https://cloud.r-project.org')"
+    & $RscriptExe -e $rPkgScript 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Log-Message "  [✓] R package survival is available." "Green"
+    } else {
+        Log-Message "  [!] Could not verify survival package (non-fatal)." "Yellow"
+    }
 }
 
 if ($FailedTools.Count -gt 0) {

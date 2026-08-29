@@ -2,7 +2,7 @@
 .SYNOPSIS
     05-verify.ps1 - End-to-End Environment & Pipeline Verification
 .DESCRIPTION
-    Verifies that Git, uv, Python, R, Node.js, pnpm, Quarto, DuckDB, SAS CP932 handling,
+    Verifies that Git, uv, Python, R, Node.js, pnpm, TypeScript, Quarto, DuckDB, SAS CP932 handling,
     and PowerPoint reporting are operational through automated synthetic execution.
     NOTE: Do not name parameters $args (PowerShell automatic variable) — that drops
     "--version" and can launch interactive CLIs (e.g. duckdb) which hang the setup.
@@ -170,6 +170,8 @@ Assert-Tool -Id "quarto" -Name "Quarto CLI" -Command "quarto" -VersionArgs @("--
 Assert-Tool -Id "duckdb" -Name "DuckDB CLI" -Command "duckdb" -VersionArgs @("--version")
 Assert-Tool -Id "node" -Name "Node.js" -Command "node" -VersionArgs @("--version")
 Assert-Tool -Id "pnpm" -Name "pnpm" -Command "pnpm" -VersionArgs @("--version")
+Assert-Tool -Id "tsc" -Name "TypeScript Compiler" -Command "tsc" -VersionArgs @("--version")
+Assert-Tool -Id "ts-node" -Name "ts-node" -Command "ts-node" -VersionArgs @("--version")
 
 # 2. Copier Check
 $copierCmd = Get-Command "copier" -ErrorAction SilentlyContinue
@@ -289,18 +291,22 @@ try {
                 }
             }
 
-            # 3.4 PowerPoint report generation validation
-            Write-Host "  [...] Testing PowerPoint presentation generator..." -ForegroundColor Gray
-            $pyPptxTest = "from pptx import Presentation; prs = Presentation(); prs.save('outputs/private/sample_presentation.pptx')"
-            $pptxRes = Invoke-ToolCapture -FilePath $uv -ArgumentList @(
-                "run", "--no-project", "--with", "python-pptx",
-                "python", "-c", $pyPptxTest
-            ) -TimeoutSec 120 -ProgressLabel "python-pptx"
-            if (($pptxRes.ExitCode -eq 0) -and (Test-Path "outputs/private/sample_presentation.pptx")) {
-                $Report.checks += @{ id = "pptx_generation"; name = "PowerPoint Generation"; status = "PASS" }
-                Write-Host "  [OK] PowerPoint Generator: PASS" -ForegroundColor Green
+            # 3.4 TypeScript PowerPoint report generation validation
+            Write-Host "  [...] Testing TypeScript PowerPoint generator (pnpm report:pptx)..." -ForegroundColor Gray
+            $pnpmExe = (Get-Command "pnpm" -ErrorAction SilentlyContinue).Source
+            if (-not $pnpmExe) {
+                throw "pnpm not found for TypeScript pipeline test"
+            }
+            $installRes = Invoke-ToolCapture -FilePath $pnpmExe -ArgumentList @("install") -TimeoutSec 300 -ProgressLabel "pnpm install"
+            if ($installRes.ExitCode -ne 0) {
+                throw "pnpm install failed (exit=$($installRes.ExitCode)): $($installRes.Output)"
+            }
+            $tsRes = Invoke-ToolCapture -FilePath $pnpmExe -ArgumentList @("run", "report:pptx") -TimeoutSec 180 -ProgressLabel "pnpm report:pptx"
+            if (($tsRes.ExitCode -eq 0) -and (Test-Path "outputs/private/sample_presentation.pptx")) {
+                $Report.checks += @{ id = "typescript_pptx_pipeline"; name = "TypeScript PPTX Pipeline"; status = "PASS" }
+                Write-Host "  [OK] TypeScript PPTX Pipeline: PASS" -ForegroundColor Green
             } else {
-                throw "PowerPoint generation failed (exit=$($pptxRes.ExitCode)): $($pptxRes.Output)"
+                throw "TypeScript PPTX generation failed (exit=$($tsRes.ExitCode)): $($tsRes.Output)"
             }
 
             # 3.5 Governance validation check

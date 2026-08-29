@@ -40,10 +40,10 @@ if (-not $IsAdmin) {
 
 $Steps = @(
     @{ id = "00"; name = "環境 / ハードウェア非破壊診断"; script = "00-diagnose.ps1" },
-    @{ id = "01"; name = "共通開発ツール導入 (Terminal, PS7, Git, 7-Zip)"; script = "01-install-common.ps1" },
-    @{ id = "02"; name = "統計・RWD解析スタック導入 (uv, Python 3.12, Copier, rig, R, Quarto, DuckDB)"; script = "02-install-analysis.ps1" },
-    @{ id = "03"; name = "報告・スライドスタック導入 (Node.js, pnpm, Slidev/TypeScript)"; script = "03-install-reporting.ps1" },
-    @{ id = "04"; name = "Cursor IDE 設定 / 拡張機能・CP932マッピング構成"; script = "04-configure.ps1" },
+    @{ id = "01"; name = "共通開発ツール導入 (Terminal, PS7, Git, 7-Zip, Gitleaks)"; script = "01-install-common.ps1" },
+    @{ id = "02"; name = "統計・RWD解析スタック導入 (uv, Python 3.12, Copier, R 4.6.1, rig/Rtools, Quarto, DuckDB)"; script = "02-install-analysis.ps1" },
+    @{ id = "03"; name = "報告・スライドスタック導入 (Node.js, pnpm, TypeScript, Slidev)"; script = "03-install-reporting.ps1" },
+    @{ id = "04"; name = "Cursor IDE 設定 / 拡張機能・pre-commit・CP932マッピング構成"; script = "04-configure.ps1" },
     @{ id = "05"; name = "全ツール稼働 / 合成データエンドツーエンド自動検証"; script = "05-verify.ps1" }
 )
 
