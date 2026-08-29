@@ -36,13 +36,13 @@ jobs:
           if ($fail -gt 0) { exit 1 }
           Write-Host "All PowerShell scripts parsed successfully."
 
-      - name: Assert Posit.rig package id in repo
+      - name: Assert Windows R install policy in repo
         shell: pwsh
         run: |
           $analysis = Get-Content -LiteralPath .\scripts\windows\02-install-analysis.ps1 -Raw
           $matrix = Get-Content -LiteralPath .\docs\software-matrix.md -Raw
-          if ($analysis -notmatch 'Posit\.rig') {
-            Write-Error "scripts/windows/02-install-analysis.ps1 must reference Posit.rig"
+          if ($analysis -notmatch 'cran\.r-project\.org') {
+            Write-Error "scripts/windows/02-install-analysis.ps1 must install R from official CRAN"
             exit 1
           }
           # Ban obsolete WinGet id usage (comments saying it does not exist are OK)
@@ -51,11 +51,11 @@ jobs:
             exit 1
           }
           if ($matrix -notmatch 'Posit\.rig') {
-            Write-Error "docs/software-matrix.md must reference Posit.rig"
+            Write-Error "docs/software-matrix.md must reference Posit.rig for rig"
             exit 1
           }
           if ($matrix -match '(?i)winget install[^\r\n|`]*RProject\.rig') {
             Write-Error "docs/software-matrix.md must not recommend installing RProject.rig"
             exit 1
           }
-          Write-Host "Posit.rig package id gate PASSED."
+          Write-Host "Windows R install policy gate PASSED."

@@ -170,7 +170,8 @@ if (-not $RAlreadyInstalled) {
         }
     }
 } else {
-    Log-Message "  [✓] R $RVersion is already installed ($RExe)." "Green"
+    $installedRExe = $RExeCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    Log-Message "  [✓] R $RVersion is already installed ($installedRExe)." "Green"
 }
 
 $RBinDir = $RBinCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
