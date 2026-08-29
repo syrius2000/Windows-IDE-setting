@@ -124,6 +124,7 @@ try {
         "--trust",
         "-d", "project_id=$Name",
         "-d", "project_title=$Name",
+        "-d", "profile=$Profile",
         "-d", "data_classification=$DataClassification",
         "-d", "primary_language=$PrimaryLanguage",
         "-d", "sas_encoding=$SasEncoding"
@@ -161,6 +162,18 @@ try {
         Copy-Item -Path $SchemaSource -Destination (Join-Path $ProjectSchemaDir "project.schema.json") -Force
     }
 
+    # Copy repository-managed skills into the generated Case Project.
+    # .agents/skills is the canonical source; Cursor-specific adapters can be added later.
+    $SourceAgentsSkills = Join-Path $PlatformRoot ".agents\skills"
+    $TargetAgentsSkills = Join-Path $TargetDir ".agents\skills"
+    if (Test-Path -LiteralPath $SourceAgentsSkills) {
+        New-Item -ItemType Directory -Path $TargetAgentsSkills -Force | Out-Null
+        Copy-Item -Path (Join-Path $SourceAgentsSkills "*") -Destination $TargetAgentsSkills -Recurse -Force
+        Write-Host "[✓] Repository skills copied from .agents\skills." -ForegroundColor Green
+    } else {
+        Write-Host "[INFO] No repository-managed .agents\skills found; skipping skill copy." -ForegroundColor Gray
+    }
+
     # 5. Integrity & Governance Validation (via uv run python or fallback)
     Write-Host "[2/6] Validating Project Schema & Directory Governance..." -ForegroundColor Green
     $SchemaPath = Join-Path $PlatformRoot "schemas\project.schema.json"
@@ -192,7 +205,7 @@ try {
     Write-Host "`n[3/6] Project Generated Successfully:" -ForegroundColor Green
     Write-Host "  - Root: $TargetDir"
     Write-Host "  - Structure: src/, sql/, reports/, outputs/private/, outputs/release/"
-    Write-Host "  - Governance: PROJECT.yml, .cursor/rules/, .gitignore, tasks.json"
+    Write-Host "  - Governance: PROJECT.yml, .cursor/rules/, .agents/skills/, .gitignore, tasks.json"
 
     # 7. User Confirmation for Git Initialization
     $ProceedWithGit = $true
@@ -220,7 +233,7 @@ try {
                 Write-Host "            git config --global user.email 'you@example.com'"
                 Write-Host "       Skipping automatic initial commit." -ForegroundColor Yellow
             } else {
-                & git add .gitignore .cursor .vscode config data reports schemas sql src pyproject.toml package.json PROJECT.yml README.md AGENTS.md scripts | Out-Null
+                & git add .gitignore .cursor .agents .vscode config data reports schemas sql src pyproject.toml package.json PROJECT.yml README.md AGENTS.md scripts | Out-Null
                 & git commit -m "feat: initialize case project from template ($Name)" | Out-Null
                 Write-Host "[5/6] Initial Git commit created." -ForegroundColor Green
             }

@@ -68,6 +68,7 @@ if command -v copier >/dev/null 2>&1; then
         --trust \
         -d "project_id=$NAME" \
         -d "project_title=$NAME" \
+        -d "profile=$PROFILE" \
         -d "data_classification=$DATA_CLASS" \
         -d "primary_language=$PRIMARY_LANG" \
         -d "sas_encoding=$SAS_ENCODING"
@@ -77,6 +78,7 @@ elif command -v uvx >/dev/null 2>&1; then
         --trust \
         -d "project_id=$NAME" \
         -d "project_title=$NAME" \
+        -d "profile=$PROFILE" \
         -d "data_classification=$DATA_CLASS" \
         -d "primary_language=$PRIMARY_LANG" \
         -d "sas_encoding=$SAS_ENCODING"
@@ -89,6 +91,15 @@ fi
 mkdir -p "$TARGET_DIR/scripts"
 cp "$PLATFORM_ROOT/scripts/project/validate-project.py" "$TARGET_DIR/scripts/validate-project.py"
 chmod +x "$TARGET_DIR/scripts/validate-project.py"
+
+# Copy repository-managed skills; .agents/skills is the canonical source.
+if [[ -d "$PLATFORM_ROOT/.agents/skills" ]]; then
+    mkdir -p "$TARGET_DIR/.agents/skills"
+    cp -R "$PLATFORM_ROOT/.agents/skills/." "$TARGET_DIR/.agents/skills/"
+    echo "[OK] Repository skills copied from .agents/skills."
+else
+    echo "[INFO] No repository-managed .agents/skills found; skipping skill copy."
+fi
 
 # 5. Integrity & Governance Validation (via uv run python or fallback)
 echo "[2/6] Validating Project Schema & Directory Governance..."
@@ -103,7 +114,7 @@ fi
 echo -e "\n[3/6] Project Generated Successfully:"
 echo "  - Root: $TARGET_DIR"
 echo "  - Structure: src/, sql/, reports/, outputs/private/, outputs/release/"
-echo "  - Governance: PROJECT.yml, .cursor/rules/, .gitignore, tasks.json"
+echo "  - Governance: PROJECT.yml, .cursor/rules/, .agents/skills/, .gitignore, tasks.json"
 
 # 7. User Confirmation for Git Initialization
 read -r -p "Do you want to initialize Git and open in Cursor? (Y/n): " response || response="y"
@@ -123,7 +134,7 @@ if [[ "$response" != "n" ]]; then
         echo "            git config --global user.email 'you@example.com'"
         echo "       Skipping automatic initial commit."
     else
-        git add .gitignore .cursor .vscode config data reports schemas sql src pyproject.toml package.json PROJECT.yml README.md AGENTS.md scripts >/dev/null 2>&1 || true
+        git add .gitignore .cursor .agents .vscode config data reports schemas sql src pyproject.toml package.json PROJECT.yml README.md AGENTS.md scripts >/dev/null 2>&1 || true
         git commit -m "feat: initialize case project from template ($NAME)" >/dev/null
         echo "[5/6] Initial Git commit created."
     fi

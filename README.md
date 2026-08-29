@@ -2,7 +2,7 @@
 
 [![OpenSpec](https://img.shields.io/badge/OpenSpec-spec--driven-blue)](openspec/)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![R](https://img.shields.io/badge/R-4.4.1-blue.svg)](https://www.r-project.org/)
+[![R](https://img.shields.io/badge/R-4.6.1-blue.svg)](https://www.r-project.org/)
 [![SAS](https://img.shields.io/badge/SAS-CP932%20(Optional)-green.svg)](https://www.sas.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -53,6 +53,10 @@ graph TD
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
   .\scripts\windows\Setup-WindowsEnvironment.ps1
   ```
+
+#### セットアップの再実行
+
+`Setup-Windows.bat` は、環境確認や修復のために繰り返し実行できます。既に利用可能なツール、R 4.6.1、グローバル開発ツール、Cursor拡張機能は検出してスキップし、不足しているものだけを導入します。最後の稼働検証（Step 05）は毎回実行されます。
 - 📖 詳細は [クリーン Windows 11 初期セットアップ手順書](docs/windows-bootstrap-guide.md) をご覧ください。
 
 ---
@@ -109,6 +113,10 @@ python3 ./scripts/macos/test-odbc.py --dsn rwd_research_db
 ```
 
 ---
+
+## 🧩 Agent Skills の配備
+
+リポジトリで管理するSkillsの正本は **`.agents/skills/`** です。Case Project生成時に、このディレクトリの内容が生成先の `.agents/skills/` へコピーされます。Cursor固有のプロジェクトルールは引き続き `.cursor/rules/` で管理します。
 
 ## 📚 ドキュメント一覧
 

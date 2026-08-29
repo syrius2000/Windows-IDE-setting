@@ -3,7 +3,7 @@
     02-install-analysis.ps1 - Install Statistical & RWD Analysis Toolchain on Windows 11
 .DESCRIPTION
     Installs uv, Python 3.12, pinned Copier (9.4.1), Quarto CLI, DuckDB CLI,
-    and R 4.4 via rig (R Installation Manager).
+    and R 4.6.1 from the official CRAN Windows installer; optionally adds Rtools via rig.
 #>
 
 Set-StrictMode -Version Latest
@@ -72,12 +72,31 @@ if ($uvAvailable) {
         $FailedTools += "Python 3.12"
     }
 
-    # 3. Install Pinned Global Tools via uv tool
-    Log-Message "  [...] Installing pinned Copier (9.4.1), Ruff, and pre-commit..." "Yellow"
-    & uv tool install "copier==9.4.1" --force | Out-Null
-    & uv tool install "ruff" --force | Out-Null
-    & uv tool install "pre-commit" --force | Out-Null
-    Log-Message "  [✓] Copier (9.4.1), Ruff, and pre-commit installed via uv tool." "Green"
+    # 3. Install Pinned Global Tools via uv tool (skip when command already exists)
+    function Ensure-UvTool {
+        param(
+            [Parameter(Mandatory = $true)][string]$Package,
+            [Parameter(Mandatory = $true)][string]$Command,
+            [Parameter(Mandatory = $true)][string]$DisplayName
+        )
+        $existing = Get-Command $Command -ErrorAction SilentlyContinue
+        if ($existing) {
+            Log-Message "  [✓] $DisplayName already available; skipping reinstall ($($existing.Source))." "Green"
+            return
+        }
+        Log-Message "  [...] Installing $DisplayName via uv tool..." "Yellow"
+        & uv tool install $Package | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Log-Message "  [✗] Failed to install $DisplayName (exit $LASTEXITCODE)." "Red"
+            $script:FailedTools += $DisplayName
+        } else {
+            Log-Message "  [✓] $DisplayName installed via uv tool." "Green"
+        }
+    }
+
+    Ensure-UvTool -Package "copier==9.4.1" -Command "copier" -DisplayName "Copier 9.4.1"
+    Ensure-UvTool -Package "ruff" -Command "ruff" -DisplayName "Ruff"
+    Ensure-UvTool -Package "pre-commit" -Command "pre-commit" -DisplayName "pre-commit"
 }
 
 # 4. Install Quarto CLI
@@ -114,8 +133,63 @@ if (-not $duckdbCmd) {
     Log-Message "  [✓] DuckDB CLI is already installed." "Green"
 }
 
-# 6. Install rig (R Installation Manager) & R
-# Official WinGet ID is Posit.rig (RProject.rig does not exist).
+# 6. Install R 4.6.1 from the official CRAN Windows installer
+# CRAN URL is intentionally pinned so the installed R version is reproducible.
+$RVersion = "4.6.1"
+$RInstallerUrl = "https://cran.r-project.org/bin/windows/base/R-4.6.1-win.exe"
+$RInstallDir = Join-Path $env:ProgramFiles "R\R-$RVersion"
+$RBinCandidates = @(
+    (Join-Path $RInstallDir "bin\x64"),
+    (Join-Path $RInstallDir "bin")
+)
+$RBinDir = $RBinCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+$RExeCandidates = $RBinCandidates | ForEach-Object { Join-Path $_ "R.exe" }
+$RscriptCandidates = $RBinCandidates | ForEach-Object { Join-Path $_ "Rscript.exe" }
+$RAlreadyInstalled = @($RExeCandidates | Where-Object { Test-Path -LiteralPath $_ }).Count -gt 0
+
+if (-not $RAlreadyInstalled) {
+    $RInstaller = Join-Path $env:TEMP "R-$RVersion-win.exe"
+    try {
+        Log-Message "  [...] Downloading R $RVersion from official CRAN..." "Yellow"
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $RInstallerUrl -OutFile $RInstaller -UseBasicParsing -TimeoutSec 180
+        if (-not (Test-Path -LiteralPath $RInstaller) -or ((Get-Item -LiteralPath $RInstaller).Length -lt 1MB)) {
+            throw "CRAN R installer was not downloaded completely."
+        }
+        Log-Message "  [...] Installing R $RVersion silently..." "Yellow"
+        $rProc = Start-Process -FilePath $RInstaller -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
+        if ($rProc.ExitCode -ne 0 -and $rProc.ExitCode -ne 3010) {
+            throw "R installer exited with code $($rProc.ExitCode)"
+        }
+    } catch {
+        Log-Message "  [✗] R $RVersion installation failed: $_" "Red"
+        $FailedTools += "R $RVersion"
+    } finally {
+        if (Test-Path -LiteralPath $RInstaller) {
+            Remove-Item -LiteralPath $RInstaller -Force -ErrorAction SilentlyContinue
+        }
+    }
+} else {
+    $installedRExe = $RExeCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    Log-Message "  [✓] R $RVersion is already installed ($installedRExe)." "Green"
+}
+
+$RBinDir = $RBinCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+$RscriptExe = $RscriptCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if ($RBinDir -and (Test-Path -LiteralPath $RBinDir)) {
+    if ($env:Path -notlike "*$RBinDir*") { $env:Path = "$RBinDir;$env:Path" }
+    if ($RscriptExe) {
+        Log-Message "  [✓] R $RVersion is operational ($RscriptExe)." "Green"
+    } else {
+        Log-Message "  [✗] Rscript.exe was not found after installing R $RVersion." "Red"
+        $FailedTools += "R $RVersion"
+    }
+} else {
+    Log-Message "  [✗] R installation directory not found: $RInstallDir" "Red"
+    $FailedTools += "R $RVersion"
+}
+
+# 7. Optional Rtools installation through rig (R itself does not depend on rig).
 function Refresh-SessionPath {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" +
                 [System.Environment]::GetEnvironmentVariable("Path", "Machine")
@@ -129,65 +203,17 @@ function Refresh-SessionPath {
     }
 }
 
-function Install-RigFromGitHub {
-    Log-Message "  [...] Falling back to GitHub release installer for rig..." "Yellow"
-    $installer = $null
-    try {
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
-        $api = Invoke-RestMethod -Uri "https://api.github.com/repos/r-lib/rig/releases/latest" -TimeoutSec 30
-        $asset = $api.assets | Where-Object { $_.name -match '^rig-windows-.*\.exe$' } | Select-Object -First 1
-        if (-not $asset) { throw "No Windows installer asset found in latest rig release." }
-        $installer = Join-Path $env:TEMP $asset.name
-        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installer -UseBasicParsing -TimeoutSec 120
-        $proc = Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
-        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
-            throw "rig installer exited with code $($proc.ExitCode)"
-        }
-        return $true
-    } catch {
-        Log-Message "  [!] GitHub fallback for rig failed: $_" "Red"
-        return $false
-    } finally {
-        if ($installer -and (Test-Path $installer)) {
-            Remove-Item -Path $installer -Force -ErrorAction SilentlyContinue
-        }
-    }
-}
-
 $rigCmd = Get-Command "rig" -ErrorAction SilentlyContinue
-if (-not $rigCmd) {
-    Log-Message "  [...] Installing rig (R Manager) via WinGet (Posit.rig)..." "Yellow"
-    $proc = Start-Process -FilePath "winget" `
-        -ArgumentList "install", "--id", "Posit.rig", "--exact", "--source", "winget", "--silent", "--disable-interactivity", "--accept-package-agreements", "--accept-source-agreements" `
-        -Wait -PassThru -NoNewWindow
-    Refresh-SessionPath
-    if (-not (Get-Command "rig" -ErrorAction SilentlyContinue)) {
-        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
-            Log-Message "  [!] WinGet Posit.rig returned exit code $($proc.ExitCode)." "Yellow"
-        }
-        [void](Install-RigFromGitHub)
-        Refresh-SessionPath
-    }
-}
-
-Refresh-SessionPath
-$rigAvailable = Get-Command "rig" -ErrorAction SilentlyContinue
-if ($rigAvailable) {
-    Log-Message "  [...] Adding R 4.4.1 and matching Rtools via rig..." "Yellow"
-    & rig add 4.4.1
+if ($rigCmd) {
+    Log-Message "  [...] Adding matching Rtools via rig..." "Yellow"
+    & rig add rtools
     if ($LASTEXITCODE -ne 0) {
-        Log-Message "  [✗] rig add 4.4.1 failed (exit $LASTEXITCODE)." "Red"
-        $FailedTools += "R 4.4.1"
+        Log-Message "  [!] rig add rtools returned $LASTEXITCODE (R itself is already operational)." "Yellow"
     } else {
-        & rig add rtools
-        if ($LASTEXITCODE -ne 0) {
-            Log-Message "  [!] rig add rtools returned $LASTEXITCODE (R itself may still work)." "Yellow"
-        }
-        Log-Message "  [✓] R 4.4.1 and Rtools installed via rig." "Green"
+        Log-Message "  [✓] Rtools installed via rig." "Green"
     }
 } else {
-    Log-Message "  [✗] rig command not found after WinGet and GitHub fallback." "Red"
-    $FailedTools += "R / rig"
+    Log-Message "  [i] rig not found; skipping optional Rtools installation." "Gray"
 }
 
 if ($FailedTools.Count -gt 0) {
