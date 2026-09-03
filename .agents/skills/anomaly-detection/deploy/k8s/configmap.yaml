@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edc-rwd-anomaly-detection-config
+data:
+  default.yaml: |
+    mode: batch
+    thresholds:
+      warning: 0.55
+      critical: 0.80

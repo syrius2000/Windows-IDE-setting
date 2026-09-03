@@ -1,0 +1,61 @@
+---
+title: "Questionnaire Batch Analysis Report"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+params:
+  title: "Report"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(ggplot2, knitr)
+
+detect_jp_font <- function() {
+  os <- Sys.info()[["sysname"]]
+  candidates <- switch(os,
+    "Darwin"  = c("Hiragino Sans", "HiraginoSans-W3", "Hiragino Kaku Gothic Pro"),
+    "Windows" = c("Yu Gothic", "Meiryo", "MS Gothic"),
+    "Linux"   = c("Noto Sans CJK JP", "IPAexGothic", "IPAGothic"),
+    character(0)
+  )
+  if (requireNamespace("systemfonts", quietly = TRUE)) {
+    avail <- unique(systemfonts::system_fonts()$family)
+    for (f in candidates) {
+      if (f %in% avail) {
+        return(f)
+      }
+    }
+  }
+  if (length(candidates) > 0L) {
+    return(candidates[1L])
+  }
+  ""
+}
+
+jp_font <- detect_jp_font()
+```
+
+```{r summary-text}
+cat("Residual plot\n")
+```
+
+```{r residual-plot}
+plot_df <- data.frame(idx = 1:3, res = c(1.2, -0.4, 2.1))
+plot_df$idx_f <- factor(plot_df$idx, levels = plot_df$idx)
+p <- ggplot2::ggplot(plot_df, ggplot2::aes(idx_f, res)) +
+  ggplot2::geom_point() +
+  ggplot2::labs(x = "Index (cell order)", y = "Pearson residuals vs index") +
+  ggplot2::theme_minimal(base_size = 13, base_family = jp_font)
+print(p)
+```
+
+```{r interpretation-guide}
+cat("解釈ガイド（残差）\n")
+cat("- |res| >= 1.96: 5%水準の目安\n")
+cat("- |res| >= 2.58: 1%水準の目安\n")
+```
+

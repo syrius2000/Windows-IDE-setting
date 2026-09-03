@@ -62,27 +62,114 @@ graph TD
 ---
 
 ### ② 【導入済みの方】新規解析テーマ（Case Project）の生成
-解析テーマ（例: 泌尿器科、ポンペ病等）ごとに、独立したGitリポジトリを1コマンドで生成します。
 
-**実行場所**: 本リポジトリ（プラットフォーム）のルートディレクトリ。  
-**既定の生成先**: `%USERPROFILE%\Programing\RWD-Projects\<Name>`（変更する場合は `-DestinationRoot`）。  
-**Git 身元**: `git config --global user.name` / `user.email` が未設定だと初回コミットがスキップされます（[FAQ](docs/windows-bootstrap-guide.md#q6-case-project-はできたがinitial-git-commitがスキップされる) / [Troubleshoot §10](docs/windows-troubleshooting.md#10-git-身元未設定で初回コミットがスキップされる)）。
+解析案件（例: 泌尿器科解析 `case-urology`、ポンペ病研究 `case-pompe-disease` など）ごとに、ガバナンスとセキュリティルール（4大原則: `src/`, `sql/`, `reports/`, `outputs/`）が組み込まれた独立Gitリポジトリを生成します。
 
-```powershell
-# 【パターン A】 Python 主解析（SAS不要・推奨）
-.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "python"
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 研究者 / 解析者
+    participant Launcher as Create-NewProject.bat
+    participant Factory as New-AnalysisProject.ps1
+    participant Copier as Copier Scaffolder
+    participant IDE as Cursor IDE
 
-# 【パターン B】 R 主解析（SAS不要・推奨）
-.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "r"
-
-# 【パターン C】 既存SAS併用（SAS保有時のみ）
-.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "sas" -SasEncoding "cp932"
+    User->>Launcher: ダブルクリック起動
+    Launcher->>Factory: 対話ガイド起動
+    User->>Factory: 1. 案件名を入力 (例: urology)
+    User->>Factory: 2. 主使用言語を選択 (1: Python / 2: R / 3: SAS)
+    User->>Factory: 3. データ区分を選択 (1: 匿名化 / 2: 合成 / 3: 機微)
+    Factory->>Copier: テンプレート適用 & ガバナンス検査
+    Copier-->>Factory: リポジトリ生成完了 (RWD-Projects/case-urology)
+    Factory->>IDE: 案件ディレクトリを Cursor で自動オープン
 ```
 
+---
+
+#### 🚀 【手順 1】 ダブルクリックによる対話型作成（標準・推奨）
+
+1. 本リポジトリルートにある **`Create-NewProject.bat`** をダブルクリックして起動します。
+2. 画面の案内に従って以下の3つの質問にキーボードで回答します。
+
+##### 💻 画面表示イメージ（対話ウィザード）:
+```text
+========================================================
+  新規 RWD 解析プロジェクト (Case Project) 作成ガイド
+========================================================
+
+【1】プロジェクト名を入力してください（小文字英数字・ハイフン）
+     例: urology -> 自動的に 'case-urology' と命名されます
+  プロジェクト名 [既定: urology]: urology
+  -> 設定された名前: case-urology
+
+【2】主に使用する解析言語を選択してください
+  1) Python  (推奨・標準データ解析環境)
+  2) R       (推奨・統計解析環境)
+  3) SAS     (CP932文字コード・既存SAS資産併用)
+  選択 [1-3] (既定: 1): 1
+  -> 解析言語: python
+
+【3】扱うデータのセキュリティ区分を選択してください
+  1) deidentified (匿名化データ・標準)
+  2) synthetic    (テスト用合成データ)
+  3) sensitive    (高セキュリティ機微データ)
+  選択 [1-3] (既定: 1): 1
+  -> データ区分: deidentified
+
+[1/6] Generating project scaffold with Copier...
+[2/6] Validating Project Schema & Directory Governance...
+[3/6] Project Generated Successfully: C:\Users\YourName\Programing\RWD-Projects\case-urology
+[4/6] Initializing local Git repository...
+[5/6] Initial Git commit created.
+[6/6] Launching Cursor IDE...
+```
+
+3. 完了すると生成された案件フォルダが **自動的に Cursor IDE で開かれます**。
+
+---
+
+#### 🛠️ 【手順 2】 コマンドライン／ターミナルからの作成（アドバンスド）
+
+ターミナル（PowerShell / Bash）から引数を指定して一発で作成することも可能です。
+
+##### 🔹 Windows (PowerShell) の場合
+```powershell
+# 1. 引数なしで実行（対話ウィザードが起動します）
+.\scripts\project\New-AnalysisProject.ps1
+
+# 2. 全パラメータを直接指定して非対話実行
+.\scripts\project\New-AnalysisProject.ps1 -Name "case-urology" -PrimaryLanguage "python" -DataClassification "deidentified"
+```
+
+##### 🔹 macOS / Linux (Bash) の場合
 ```bash
-# macOS の場合
+# 1. 引数なしで実行（対話プロンプトが起動します）
+./scripts/project/new-analysis-project.sh
+
+# 2. 全パラメータを直接指定して実行
 ./scripts/project/new-analysis-project.sh case-pompe-disease mac-rwd-expert sensitive python
 ```
+
+---
+
+#### 📁 生成される Case Project の構造（4大原則）
+
+作成されたプロジェクト（`RWD-Projects/case-<Name>`）内は、全案件共通で以下のフォルダ構成となっています：
+
+| ディレクトリ | 用途・格納対象 | Git管理 |
+| :--- | :--- | :--- |
+| `src/` | Python / R / SAS スクリプト | ✅ Git管理 |
+| `sql/` | SQL クエリ・ビュー定義 | ✅ Git管理 |
+| `reports/` | Quarto 報告書（`.qmd`） / Slidev スライド | ✅ Git管理 |
+| `outputs/private/` | 中間集計データ・作業中出力 | ❌ Git除外 |
+| `outputs/release/` | 開示チェック済みの最終成果物 (`release-manifest.yml` 必須) | ✅ Git管理 |
+| `data/` | 合成データ・公開サンプル | ⚠️ 実患者データは禁止 |
+
+> 💡 **補足事項**:
+> - **生成場所**: 既定では `%USERPROFILE%\Programing\RWD-Projects\<Name>` に自動作成されます。
+> - **🎓 AI Agent スキルの全自動配備 (コピペ不要)**: マスター基盤（`.agents/skills/`）にある有用なスキル群が、作成される各プロジェクトの `.agents/skills/` へ**自動的にまるごとコピー配備**されます。受講生が手動でスキルをコピペする必要はありません。
+> - **自動名前補正**: `urology` や `case_urology` と入力しても、全自動でハイフン区切りの `case-urology` に標準化されます。
+> - **Git 初期コミット**: `git config --global user.name` および `user.email` が事前に設定されている場合、生成直後に「Initial Git commit」が自動作成されます（未設定時はスキップされます）。手順は [Git身元設定FAQ](docs/windows-bootstrap-guide.md#q6-case-project-はできたがinitial-git-commitがスキップされる) を参照してください。
 
 ---
 
@@ -126,6 +213,7 @@ python3 ./scripts/macos/test-odbc.py --dsn rwd_research_db
 - 🛠️ [日常運用マニュアル](docs/daily-operations.md)
 - 🌱 [Git基本ワークフロー](docs/git-basic-workflow.md)
 - 🤖 [Cursor AIプロンプトレシピ集](docs/ai-prompt-recipes.md)
+- 📝 [AI Agent 開発知見・アーキテクチャメモ](docs/ai-memo.md)
 - 📋 [ソフトウェア構成表（Software Bill of Materials）](docs/software-matrix.md)
 - 🔤 [SAS CP932 文字コード管理マニュアル](docs/sas-cp932.md)
 - 🔒 [MySQL 8.0 読取専用・ODBC接続基準](docs/mysql-readonly.md)

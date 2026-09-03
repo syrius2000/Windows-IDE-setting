@@ -1,0 +1,635 @@
+---
+title: "Categorical analysis (vcd, up to 3-way) [LEGACY v1.x]"
+output:
+  html_document: default
+  pdf_document: default
+params:
+  data_path: ""
+  builtin_dataset: "Titanic"
+  vars: ["Class", "Survived"]
+  output_dir: "./skill_out/vcd_categorical/"
+  residual_table_pkg: "gt"
+  alpha: 0.05
+  plot_mode: "auto"
+  max_cells_2way: 16
+  max_cells_3way: 36
+  max_label_chars: 24
+  max_cells_dotplot: 25
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 8, fig.height = 6)
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(datasets, vcd, gt, knitr, ggplot2, jsonlite)
+if (identical(params$residual_table_pkg, "kableExtra")) {
+  if (!requireNamespace("kableExtra", quietly = TRUE)) {
+    stop("Install kableExtra or set residual_table_pkg to \"gt\"")
+  }
+  suppressPackageStartupMessages(library(kableExtra))
+}
+dir.create(params$output_dir, recursive = TRUE, showWarnings = FALSE)
+fig_dir <- file.path(params$output_dir, "figures")
+dir.create(fig_dir, showWarnings = FALSE)
+knitr::opts_chunk$set(fig.path = paste0(fig_dir, "/"))
+
+detect_jp_font <- function() {
+  os <- Sys.info()[["sysname"]]
+  candidates <- switch(os,
+    "Darwin"  = c("Hiragino Sans", "HiraginoSans-W3", "Hiragino Kaku Gothic Pro"),
+    "Windows" = c("Yu Gothic", "Meiryo", "MS Gothic"),
+    "Linux"   = c("Noto Sans CJK JP", "IPAexGothic", "IPAGothic"),
+    character(0)
+  )
+  if (requireNamespace("systemfonts", quietly = TRUE)) {
+    avail <- unique(systemfonts::system_fonts()$family)
+    for (f in candidates) {
+      if (f %in% avail) {
+        return(f)
+      }
+    }
+  }
+  if (length(candidates) > 0L) {
+    return(candidates[1L])
+  }
+  ""
+}
+jp_font <- detect_jp_font()
+
+should_render_mosaic <- function(tbl, plot_mode = params$plot_mode,
+                                 max_cells_2way = params$max_cells_2way,
+                                 max_cells_3way = params$max_cells_3way,
+                                 max_label_chars = params$max_label_chars) {
+  if (identical(plot_mode, "always")) {
+    return(TRUE)
+  }
+  if (identical(plot_mode, "residual_only")) {
+    return(FALSE)
+  }
+  dims <- dim(tbl)
+  n_way <- length(dims)
+  total_cells <- prod(dims)
+  cell_limit <- if (n_way <= 2L) max_cells_2way else max_cells_3way
+  if (total_cells > cell_limit) {
+    return(FALSE)
+  }
+  all_labels <- unlist(dimnames(tbl))
+  if (max(nchar(all_labels), na.rm = TRUE) > max_label_chars) {
+    return(FALSE)
+  }
+  TRUE
+}
+
+residual_plot_mode <- function(tbl, max_cells_dotplot = params$max_cells_dotplot) {
+  dims <- dim(tbl)
+  n_way <- length(dims)
+  total_cells <- prod(dims)
+  if (total_cells <= max_cells_dotplot) {
+    return("dotplot")
+  }
+  if (n_way <= 2L) {
+    return("heatmap")
+  }
+  "facet_heatmap"
+}
+
+MARGINAL_STRATA_DELTA <- 0.05
+
+cramer_v_df_star <- function(tab2) {
+  d <- dim(tab2)
+  as.integer(min(d[1L] - 1L, d[2L] - 1L))
+}
+
+cramer_effect_label_from_v <- function(V, tab2) {
+  if (length(V) != 1L || is.na(V)) {
+    return(NA_character_)
+  }
+  dfs <- cramer_v_df_star(tab2)
+  if (!is.finite(dfs) || dfs < 1L) {
+    return(NA_character_)
+  }
+  w_s <- 0.1 / sqrt(dfs)
+  w_m <- 0.3 / sqrt(dfs)
+  w_l <- 0.5 / sqrt(dfs)
+  if (V >= w_l) {
+    "large"
+  } else if (V >= w_m) {
+    "medium"
+  } else if (V >= w_s) {
+    "small"
+  } else {
+    "negligible"
+  }
+}
+
+cramer_strata_list_to_json <- function(strata_named_vs, tab2_per_stratum) {
+  if (length(strata_named_vs) == 0L) {
+    return("{}")
+  }
+  obj <- vector("list", length(strata_named_vs))
+  names(obj) <- names(strata_named_vs)
+  for (i in seq_along(strata_named_vs)) {
+    Vi <- unname(strata_named_vs[[i]])
+    t2 <- tab2_per_stratum[[i]]
+    lab <- NA_character_
+    if (!is.null(t2) && length(Vi) == 1L && !is.na(Vi)) lab <- cramer_effect_label_from_v(Vi, t2)
+    obj[[i]] <- list(
+      V = Vi,
+      df_star = if (is.null(t2)) NA_integer_ else cramer_v_df_star(t2),
+      label = lab
+    )
+  }
+  jsonlite::toJSON(obj, auto_unbox = TRUE)
+}
+```
+
+```{r validate}
+vars <- unlist(params$vars, use.names = FALSE)
+stopifnot(length(vars) >= 1L, length(vars) <= 3L)
+if (anyDuplicated(vars) != 0L) stop("Duplicate variable names in params$vars")
+```
+
+```{r load-data}
+load_builtin <- function(name) {
+  if (name %in% c("Titanic", "HairEyeColor", "UCBAdmissions")) {
+    pkg <- "datasets"
+  } else if (name == "Arthritis") {
+    pkg <- "vcd"
+  } else {
+    stop("Supported builtin_dataset: Titanic, HairEyeColor, UCBAdmissions, Arthritis")
+  }
+  data(list = name, package = pkg, envir = environment())
+  obj <- get(name, envir = environment())
+  if (is.table(obj)) as.data.frame(obj) else as.data.frame(obj)
+}
+
+if (is.null(params$data_path) || params$data_path == "") {
+  dat <- load_builtin(params$builtin_dataset)
+} else {
+  dat <- utils::read.csv(params$data_path, stringsAsFactors = TRUE)
+}
+
+if (!all(vars %in% names(dat))) stop("Missing columns: ", paste(setdiff(vars, names(dat)), collapse = ", "))
+freq_candidates <- c("Freq", "freq", "count", "n", "frequency")
+freq_found <- intersect(freq_candidates, setdiff(names(dat), vars))
+if (length(freq_found) > 0L && freq_found[1L] != "Freq") {
+  names(dat)[names(dat) == freq_found[1L]] <- "Freq"
+}
+if (!"Freq" %in% names(dat)) {
+  message("Freq 列が見つかりません。自動的に行数ベースの集約(xtabs)を実行します。")
+  dat <- as.data.frame(xtabs(as.formula(paste("~", paste(vars, collapse = " + "))), data = dat))
+}
+
+for (v in vars) {
+  if (all(is.na(dat[[v]]))) stop("All NA in column: ", v)
+  if (!is.factor(dat[[v]])) {
+    warning("Coercing ", v, " to factor")
+    dat[[v]] <- factor(dat[[v]])
+  }
+}
+```
+
+**2-way** で小さい期待度数があると `chisq.test` が**警告**することがある。解釈は慎重に。**3-way 以上**は `chisq.test` 非対応のため、下記で**相互独立（主効果のみ）Poisson GLM**の Pearson 残差を出す。
+
+```{r crosstab}
+xtf <- as.formula(paste("Freq ~", paste(vars, collapse = " + ")))
+tab <- xtabs(xtf, data = dat)
+print(tab)
+```
+
+```{r chisq-test}
+nd <- length(dim(tab))
+N <- sum(tab)
+has_small_expected <- FALSE
+v_val <- NA
+cramer_v_marginal <- NA_real_
+cramer_v_df_star_val <- NA_integer_
+cramer_v_effect_label <- NA_character_
+cramer_v_strata_json <- ""
+cramer_v_strata_mean <- NA_real_
+cramer_v_strata_max <- NA_real_
+cramer_v_strata_max_level <- NA_character_
+marginal_strata_signal <- "none"
+marginal_strata_note <- ""
+
+if (nd == 2L) {
+  ct <- chisq.test(tab)
+  print(ct)
+
+  if (any(ct$expected < 5)) {
+    has_small_expected <- TRUE
+    warning("期待度数 < 5 のセルがあります。Fisher の正確検定を併記します。")
+    print(fisher.test(tab, simulate.p.value = TRUE, B = 2000))
+  }
+
+  ast_res <- suppressWarnings(vcd::assocstats(tab))
+  v_val <- ast_res$cramer
+  cat("\nCramer's V (効果量):", round(v_val, 3), "\n")
+
+  resid_tbl <- as.data.frame(as.table(ct$residuals))
+  names(resid_tbl)[ncol(resid_tbl)] <- "pearson_res"
+  cramer_v_marginal <- unname(v_val)
+  cramer_v_df_star_val <- cramer_v_df_star(tab)
+  cramer_v_effect_label <- cramer_effect_label_from_v(cramer_v_marginal, tab)
+} else {
+  df_cells <- as.data.frame(tab, stringsAsFactors = TRUE)
+  f_ind <- as.formula(paste("Freq ~", paste(vars, collapse = " + ")))
+  m_ind <- glm(f_ind, family = poisson, data = df_cells)
+  cat("3-way: Pearson 残差は「主効果のみ（相互独立）」Poisson GLM 基準（chisq.test は使わない）。\n")
+  cat("Deviance:", round(m_ind$deviance, 4), " df:", m_ind$df.residual, "\n")
+  df_cells$pearson_res <- resid(m_ind, type = "pearson")
+  resid_tbl <- df_cells[, c(vars, "pearson_res"), drop = FALSE]
+
+  tab_m <- stats::margin.table(tab, c(1L, 2L))
+  ast_m <- suppressWarnings(vcd::assocstats(tab_m))
+  cramer_v_marginal <- unname(ast_m$cramer)
+  cramer_v_df_star_val <- cramer_v_df_star(tab_m)
+  cramer_v_effect_label <- cramer_effect_label_from_v(cramer_v_marginal, tab_m)
+
+  ast_s <- suppressWarnings(vcd::assocstats(tab))
+  if (!("cramer" %in% names(ast_s))) {
+    n_str <- dim(tab)[3L]
+    dn3 <- dimnames(tab)[[3L]]
+    if (is.null(dn3)) dn3 <- as.character(seq_len(n_str))
+    strata_vs <- vapply(ast_s, function(z) unname(z$cramer), numeric(1))
+    nm_ast <- names(ast_s)
+    names(strata_vs) <- if (!is.null(nm_ast) && all(nzchar(nm_ast))) nm_ast else dn3
+    tab2_list <- vector("list", n_str)
+    names(tab2_list) <- dn3
+    for (i in seq_len(n_str)) {
+      sl <- rep(list(TRUE), nd)
+      sl[[3L]] <- i
+      t2 <- do.call(`[`, c(list(tab), sl, list(drop = TRUE)))
+      t2 <- as.table(t2)
+      dimnames(t2) <- dimnames(tab)[1:2]
+      tab2_list[[i]] <- t2
+    }
+    cramer_v_strata_mean <- mean(strata_vs, na.rm = TRUE)
+    cramer_v_strata_max <- max(strata_vs, na.rm = TRUE)
+    im <- which.max(stats::replace(strata_vs, is.na(strata_vs), -Inf))
+    if (length(im) == 1L && is.finite(strata_vs[im])) {
+      cramer_v_strata_max_level <- names(strata_vs)[im]
+    }
+    cramer_v_strata_json <- as.character(cramer_strata_list_to_json(as.list(strata_vs), tab2_list))
+    ddiff <- abs(cramer_v_marginal - cramer_v_strata_mean)
+    if (!is.finite(ddiff) || !any(is.finite(strata_vs))) {
+      marginal_strata_note <- "insufficient_strata_or_na"
+    } else if (ddiff >= MARGINAL_STRATA_DELTA) {
+      marginal_strata_signal <- "review_stratified"
+      marginal_strata_note <- sprintf(
+        "|V_marginal - mean(V_strata)|=%.4f >= %.2f",
+        ddiff, MARGINAL_STRATA_DELTA
+      )
+    } else {
+      marginal_strata_note <- "within_threshold"
+    }
+  }
+}
+
+resid_tbl$cell_label <- apply(resid_tbl[, vars, drop = FALSE], 1, paste, collapse = ":")
+resid_tbl$abs_res <- abs(resid_tbl$pearson_res)
+resid_tbl <- resid_tbl[order(-resid_tbl$abs_res), , drop = FALSE]
+resid_tbl$cell_label_wrap <- vapply(resid_tbl$cell_label, function(x) {
+  paste(strwrap(x, width = 18), collapse = "\n")
+}, character(1))
+resid_tbl$color_var <- resid_tbl[[vars[1]]]
+max_abs_pearson_res <- if (nrow(resid_tbl) > 0) resid_tbl$abs_res[1] else NA_real_
+max_residual_cell <- if (nrow(resid_tbl) > 0) resid_tbl$cell_label[1] else NA_character_
+n_significant_cells <- sum(resid_tbl$abs_res > 1.96, na.rm = TRUE)
+n_total_cells <- nrow(resid_tbl)
+top3_residual_cells <- paste(utils::head(resid_tbl$cell_label, 3L), collapse = "|")
+residual_table_view <- utils::head(
+  resid_tbl[, c(vars, "pearson_res", "abs_res"), drop = FALSE],
+  20L
+)
+```
+
+`r if(nd == 2L && N >= 500) { paste0("**【大規模データの解釈】** サンプルサイズが $N = ", N, "$ と大きいため、実質的に意味のない微小な差でもカイ二乗検定のP値が有意（P < ", params$alpha, "）判定されやすくなります。P値だけでなく**効果量 (Cramer\\'s V = ", round(v_val, 3), ")** を中心に評価してください。", ifelse(!is.na(v_val) && v_val < 0.1, " ここでは V < 0.1 となっているため、統計的に有意であっても**変数間の関連は非常に弱い（無視できるレベル）**と考えられます。", "")) }`
+
+```{r summary-text, results='asis', echo=FALSE}
+if (nd == 2L) {
+  cat("\n**分析サマリー (2-way)**\n\n")
+  cat(sprintf(
+    "χ² 検定の結果: χ²(%d) = %.2f, p %s。\n",
+    ct$parameter, ct$statistic,
+    ifelse(ct$p.value < 0.001, "< 0.001", sprintf("= %.4f", ct$p.value))
+  ))
+  cat(sprintf(
+    "残差の絶対値が最大のセルは `%s` (Pearson残差: %.2f) です。\n",
+    max_residual_cell, max_abs_pearson_res
+  ))
+  if (!is.na(v_val)) cat(sprintf("Cramer's V は %.3f でした。\n", v_val))
+  cat(sprintf("有意なセル数 (|残差| > 1.96): %d / %d セル\n", n_significant_cells, n_total_cells))
+} else {
+  cat("\n**分析サマリー (3-way)**\n\n")
+  cat(sprintf(
+    "主効果のみの相互独立 Poisson GLM に対する残差逸脱度 (Deviance) は %.2f (df = %d) です。\n",
+    m_ind$deviance, m_ind$df.residual
+  ))
+  cat(sprintf(
+    "残差の絶対値が最大のセルは `%s` (Pearson残差: %.2f) です。\n",
+    max_residual_cell, max_abs_pearson_res
+  ))
+  cat(sprintf("有意なセル数 (|残差| > 1.96): %d / %d セル\n", n_significant_cells, n_total_cells))
+  if (!is.na(cramer_v_marginal)) {
+    cat(sprintf(
+      "Cramer's V (周辺 %s x %s): %.4f (label: %s)\n",
+      vars[1], vars[2], cramer_v_marginal, cramer_v_effect_label
+    ))
+  }
+  if (!is.na(cramer_v_strata_mean)) {
+    cat(sprintf(
+      "層別 V (%s): mean = %.4f, max = %.4f%s\n",
+      vars[3], cramer_v_strata_mean, cramer_v_strata_max,
+      ifelse(nzchar(cramer_v_strata_max_level),
+        sprintf(" (max: %s)", cramer_v_strata_max_level), ""
+      )
+    ))
+  }
+  cat(sprintf(
+    "Marginal vs stratified signal: %s%s\n",
+    marginal_strata_signal,
+    ifelse(nzchar(marginal_strata_note), sprintf(" (%s)", marginal_strata_note), "")
+  ))
+}
+```
+
+```{r decision-summary, results='asis', echo=FALSE}
+cat("\n### Decision summary\n\n")
+if (nd == 2L) {
+  cat("- **Cramer's V**: ",
+    ifelse(is.na(cramer_v_marginal), "NA", sprintf("%.4f", cramer_v_marginal)),
+    " (df* = ", cramer_v_df_star_val, ", label: **", cramer_v_effect_label, "**)\n\n",
+    sep = ""
+  )
+  cat("**Caveats:** Labels use Cohen-style thresholds scaled by 1/sqrt(min(r-1,c-1)); band boundaries use **>=**.\n\n")
+} else {
+  cat("- **Cramer's V (marginal, ", vars[1], " x ", vars[2], ")**: ",
+    ifelse(is.na(cramer_v_marginal), "NA", sprintf("%.4f", cramer_v_marginal)),
+    " (label: **", cramer_v_effect_label, "**)\n",
+    sep = ""
+  )
+  cat("- **Stratified V (by ", vars[3], ")**: mean = ",
+    ifelse(is.na(cramer_v_strata_mean), "NA", sprintf("%.4f", cramer_v_strata_mean)),
+    ", max = ",
+    ifelse(is.na(cramer_v_strata_max), "NA", sprintf("%.4f", cramer_v_strata_max)),
+    ifelse(nzchar(cramer_v_strata_max_level),
+      sprintf(" (max at stratum `%s`)", cramer_v_strata_max_level), ""
+    ),
+    "\n",
+    sep = ""
+  )
+  if (identical(marginal_strata_signal, "review_stratified")) {
+    cat("\n**Attention:** Marginal Cramer's V and the mean of stratum-specific V differ by at least 0.05. **Prefer stratified tables and plots** when describing the association between `",
+      vars[1], "` and `", vars[2], "`.\n\n",
+      sep = ""
+    )
+  }
+  cat("\n**Caveats:** Heuristic only; not a formal Simpson's paradox test. V is **strength**, not **direction**. Stratum-V mean is **unweighted** across levels of `", vars[3], "`. `assocstats` uses dimensions after the first two as strata.\n\n", sep = "")
+}
+```
+
+```{r residual-model, include=FALSE}
+ff <- as.formula(paste("Freq ~", paste(vars, collapse = " * ")))
+fit_sat <- glm(ff, family = poisson, data = dat)
+
+if (length(vars) == 2L) {
+  f0 <- as.formula(paste("Freq ~", paste(vars, collapse = " + ")))
+  fit0 <- glm(f0, family = poisson, data = dat)
+  anova_fit <- anova(fit0, fit_sat, test = "Chisq")
+  fit_resid <- fit0
+  resid_main <- "Pearson residuals vs index (independence loglinear)"
+} else if (length(vars) == 3L) {
+  f0 <- as.formula(paste("Freq ~", paste(vars, collapse = " + ")))
+  f1 <- as.formula(paste("Freq ~ (", paste(vars, collapse = " + "), ")^2"))
+  m0 <- glm(f0, family = poisson, data = dat)
+  m1 <- glm(f1, family = poisson, data = dat)
+  m2 <- glm(ff, family = poisson, data = dat)
+  anova_fit <- anova(m0, m1, m2, test = "Chisq")
+  fit_resid <- m1
+  resid_main <- "Pearson residuals vs index (2-way interaction loglinear)"
+}
+```
+
+```{r interpretation-guide, include=FALSE}
+# placeholder chunk for test detection — actual guide text is in markdown below
+interpretation_guide_present <- TRUE
+```
+
+## 残差解釈ガイド
+
+### Pearson 残差とは
+
+Pearson 残差は、クロス表の各セルの**観測度数**がモデル（独立性仮説等）から予測される**期待度数**からどの程度乖離しているかを標準化した指標です。
+
+$$r_{ij} = \frac{O_{ij} - E_{ij}}{\sqrt{E_{ij}}}$$
+
+### 閾値の目安
+
+| 閾値 | 意味 |
+|------|------|
+| |残差| > **1.96** | 5% 水準で有意（期待より多い/少ない） |
+| |残差| > **2.58** | 1% 水準で有意（強い乖離） |
+
+### 正負の解釈
+
+- **正の残差** (残差 > 0): 期待より**多い**（過剰表現）。そのカテゴリの組み合わせが、独立の場合に比べて多く出現している。
+- **負の残差** (残差 < 0): 期待より**少ない**（過少表現）。そのカテゴリの組み合わせが、独立の場合に比べて少なく出現している。
+
+```{r cramers-v-guide, results='asis', echo=FALSE, eval=(nd == 2L && !is.na(v_val))}
+dfs <- cramer_v_df_star(tab)
+w_s <- 0.1 / sqrt(dfs)
+w_m <- 0.3 / sqrt(dfs)
+w_l <- 0.5 / sqrt(dfs)
+cat("### 効果量 (Cramer's V) の解釈基準 (df* = min(r-1,c-1) = ", dfs, ", thresholds w/sqrt(df*))\n\n", sep = "")
+cat("| Cramer's V | ラベル (英語) |\n")
+cat("|-----------|------|\n")
+cat(sprintf("| < %.3f | negligible |\n", w_s))
+cat(sprintf("| >= %.3f and < %.3f | small |\n", w_s, w_m))
+cat(sprintf("| >= %.3f and < %.3f | medium |\n", w_m, w_l))
+cat(sprintf("| >= %.3f | large |\n", w_l))
+cat(sprintf("\nこの分析の Cramer's V = **%.4f** （label: **%s**）\n\n", v_val, cramer_v_effect_label))
+```
+
+### 残差プロットの読み方
+
+下の残差プロット（ggplot2）は、各セルを**元データの factor level 順**（カテゴリ自然順）で Y 軸に配置しています。一方、残差表は**|残差|の降順**でソートされており、乖離が大きいセルが上位に来ます。両者を突き合わせることで、どのカテゴリの組み合わせがモデルから最も外れているかを把握できます。
+
+```{r residual-plot-heading, results='asis'}
+cat("## Residual plot\n\n")
+cat("Pearson residuals are shown first so the cells deviating most from the fitted model can be identified before reading the detailed table.\n\n")
+```
+
+```{r residual-plot, fig.height=8}
+residual_plot_df <- data.frame(
+  pearson_res = residuals(fit_resid, type = "pearson"),
+  dat[, vars, drop = FALSE]
+)
+residual_plot_df$cell_label <- apply(residual_plot_df[, vars, drop = FALSE], 1, paste, collapse = ":")
+residual_plot_df$abs_res <- abs(residual_plot_df$pearson_res)
+residual_plot_df$color_var <- residual_plot_df[[vars[1]]]
+
+rp_mode <- residual_plot_mode(tab)
+
+if (rp_mode == "dotplot") {
+  # 従来の dotplot（セル数が少ない場合）
+  residual_plot_df$cell_label_f <- factor(
+    residual_plot_df$cell_label,
+    levels = rev(unique(residual_plot_df$cell_label))
+  )
+  residual_plot_df$cell_label_wrap <- vapply(as.character(residual_plot_df$cell_label_f), function(x) {
+    paste(strwrap(x, width = 18), collapse = "\n")
+  }, character(1))
+  residual_plot_df$cell_label_wrap <- factor(
+    residual_plot_df$cell_label_wrap,
+    levels = rev(unique(residual_plot_df$cell_label_wrap))
+  )
+  ggplot2::ggplot(
+    residual_plot_df,
+    ggplot2::aes(x = cell_label_wrap, y = pearson_res, color = color_var)
+  ) +
+    ggplot2::geom_point(size = 3) +
+    ggplot2::geom_hline(yintercept = c(-1.96, 1.96), linetype = "dashed", color = "grey50") +
+    ggplot2::geom_hline(yintercept = c(-2.58, 2.58), linetype = "dotted", color = "red", alpha = 0.5) +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = resid_main,
+      subtitle = "Dashed grey: \u00b11.96 (5%), Dotted red: \u00b12.58 (1%)",
+      x = paste(vars, collapse = " : "),
+      y = "Pearson residual",
+      color = vars[1]
+    ) +
+    ggplot2::theme_minimal(base_size = 13, base_family = jp_font) +
+    ggplot2::theme(axis.text.y = ggplot2::element_text(size = 10))
+} else if (rp_mode == "heatmap") {
+  # 2-way ヒートマップ（セル数が多い場合）
+  ggplot2::ggplot(
+    residual_plot_df,
+    ggplot2::aes(x = .data[[vars[2]]], y = .data[[vars[1]]], fill = pearson_res)
+  ) +
+    ggplot2::geom_tile(color = "white", linewidth = 0.3) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = sprintf("%.2f", pearson_res)),
+      size = 3, color = "black"
+    ) +
+    ggplot2::scale_fill_gradient2(
+      low = "steelblue", mid = "white", high = "firebrick",
+      midpoint = 0, name = "Pearson\nresidual"
+    ) +
+    ggplot2::labs(
+      title = paste(resid_main, "(heatmap)"),
+      subtitle = "|res| > 1.96: significant at 5%",
+      x = vars[2], y = vars[1]
+    ) +
+    ggplot2::theme_minimal(base_size = 13, base_family = jp_font) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
+} else {
+  # facet_heatmap: 3-way（第 3 因子で facet）
+  ggplot2::ggplot(
+    residual_plot_df,
+    ggplot2::aes(x = .data[[vars[2]]], y = .data[[vars[1]]], fill = pearson_res)
+  ) +
+    ggplot2::geom_tile(color = "white", linewidth = 0.3) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = sprintf("%.2f", pearson_res)),
+      size = 2.5, color = "black"
+    ) +
+    ggplot2::scale_fill_gradient2(
+      low = "steelblue", mid = "white", high = "firebrick",
+      midpoint = 0, name = "Pearson\nresidual"
+    ) +
+    ggplot2::facet_wrap(ggplot2::vars(.data[[vars[3]]]), scales = "free") +
+    ggplot2::labs(
+      title = paste(resid_main, "(faceted heatmap)"),
+      subtitle = "|res| > 1.96: significant at 5%",
+      x = vars[2], y = vars[1]
+    ) +
+    ggplot2::theme_minimal(base_size = 12, base_family = jp_font) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
+}
+```
+
+```{r residual-table}
+longdf <- residual_table_view
+mx <- max(abs(resid_tbl$pearson_res), na.rm = TRUE)
+if (!is.finite(mx) || mx < 1e-12) mx <- 1
+
+if (identical(params$residual_table_pkg, "gt")) {
+  gt::gt(longdf) |>
+    gt::fmt_number(columns = pearson_res, decimals = 3) |>
+    gt::data_color(
+      columns = pearson_res,
+      domain = c(-mx, mx),
+      palette = "RdBu"
+    )
+} else {
+  knitr::kable(longdf, digits = 3, caption = "Pearson residuals")
+}
+```
+
+```{r mosaic-plot}
+render_mosaic <- should_render_mosaic(tab)
+if (render_mosaic) {
+  if (length(dim(tab)) <= 2L) {
+    mosaic(tab, shade = TRUE, main = "Mosaic (shaded)")
+  } else {
+    mosaic(tab, shade = TRUE, main = "Mosaic 3-way (shaded)")
+    vcd::cotabplot(tab,
+      panel = vcd::cotab_mosaic, shade = TRUE,
+      main = "Conditional mosaic (by 3rd factor)"
+    )
+  }
+} else {
+  cat(sprintf(
+    "**mosaic plot 省略**: セル数または最長ラベル文字数がしきい値を超えたため、残差プロットを優先表示しています (plot_mode=%s, cells=%d, max_label=%d chars)。\n",
+    params$plot_mode, prod(dim(tab)), max(nchar(unlist(dimnames(tab))), na.rm = TRUE)
+  ))
+}
+```
+
+```{r assoc-plot}
+render_assoc <- should_render_mosaic(tab)
+if (render_assoc) {
+  d <- length(dim(tab))
+  if (d == 2L) {
+    assoc(tab, residuals_type = "Pearson", shade = TRUE, main = "Association plot (Pearson, shaded)")
+  } else if (d >= 3L) {
+    assoc(margin.table(tab, c(1L, 2L)),
+      residuals_type = "Pearson", shade = TRUE,
+      main = "Association (margin first two factors, shaded)"
+    )
+  } else {
+    plot.new()
+    title(main = "assoc supports 2-way; skipped for 1-way margin")
+  }
+} else {
+  cat(sprintf(
+    "**assoc plot 省略**: セル数または最長ラベル文字数がしきい値を超えたため、残差プロットを優先表示しています (plot_mode=%s, cells=%d, max_label=%d chars)。\n",
+    params$plot_mode, prod(dim(tab)), max(nchar(unlist(dimnames(tab))), na.rm = TRUE)
+  ))
+}
+```
+
+```{r model-diagnostics-heading, results='asis'}
+cat("## Model diagnostics\n\n")
+cat("The fitted loglinear model summaries used to derive the residual displays are shown below.\n\n")
+```
+
+```{r glm-loglinear}
+print(summary(fit_sat))
+print(anova_fit)
+```
+
+```{r write-metrics-vcd, include=FALSE}
+metrics <- list(
+  cramer_v_marginal = cramer_v_marginal,
+  cramer_v_df_star = cramer_v_df_star_val,
+  cramer_v_effect_label = cramer_v_effect_label,
+  cramer_v_strata_json = cramer_v_strata_json,
+  cramer_v_strata_mean = cramer_v_strata_mean,
+  cramer_v_strata_max = cramer_v_strata_max,
+  cramer_v_strata_max_level = cramer_v_strata_max_level,
+  marginal_strata_signal = marginal_strata_signal,
+  marginal_strata_note = marginal_strata_note
+)
+saveRDS(metrics, file.path(params$output_dir, ".metrics.rds"))
+```

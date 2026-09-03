@@ -1,0 +1,4 @@
+survey_id,question_id,analysis_type,var1,var2,var3,output_slug,question_label,subset_expr,na_policy,ordered_levels,reference_note
+hospital_opinion_2026,q01_gender_by_department,nominal_2way,gender,department,,q01_gender_by_department,性別と診療科の関連,,drop,,全体傾向の確認
+hospital_opinion_2026,q02_satisfaction_by_age,likert_2way,satisfaction,age_group,,q02_satisfaction_by_age,満足度と年齢層の関連,visit_type == '外来',explicit_level,とても不満|不満|普通|満足|とても満足,乖離上位セルを重点確認
+hospital_opinion_2026,q03_waiting_time_by_department_shift,nominal_3way,waiting_eval,department,time_band,q03_waiting_time_by_department_shift,待ち時間評価と診療科と時間帯の関連,response_status == 'complete',drop,,時間帯別の残差プロットを比較する

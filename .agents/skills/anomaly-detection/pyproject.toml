@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anomaly-detection-skill"
+version = "0.1.0"
+description = "EDC/RWD anomaly detection AI agent skill scaffold"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Yamaguchi Manabu"}]
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "pydantic>=2.0",
+  "PyYAML>=6.0",
+  "scikit-learn>=1.4",
+  "scipy>=1.10.0",
+  "statsmodels>=0.14.0",
+]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.110", "uvicorn>=0.29"]
+dev = ["pytest>=8", "ruff>=0.4", "mypy>=1.8", "jsonschema>=4.0"]
+mlops = ["mlflow>=2.10", "evidently>=0.4"]
+deep = ["torch>=2.2"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+ignore_missing_imports = true

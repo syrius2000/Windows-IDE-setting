@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EDC/RWD Anomaly Detection Output",
+  "schema_version": "v0.2.0",
+  "type": "object",
+  "required": [
+    "results",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "default": "v0.2.0"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "record_id",
+          "score",
+          "label"
+        ],
+        "properties": {
+          "record_id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "label": {
+            "enum": [
+              "normal",
+              "warning",
+              "critical"
+            ]
+          },
+          "triggered_rules": {
+            "type": "array"
+          },
+          "model_contributions": {
+            "type": "object",
+            "properties": {
+              "rule_score": { "type": "number" },
+              "robust_mad": { "type": "number" },
+              "iforest": { "type": "number" },
+              "lof": { "type": "number" },
+              "mcd": { "type": "number" },
+              "stl": { "type": "number" }
+            }
+          },
+          "explanation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "n_records": { "type": "integer" },
+        "n_returned": { "type": "integer" },
+        "n_warning_or_critical": { "type": "integer" },
+        "audit": { "type": "object" },
+        "psi_metrics": { "type": "object" },
+        "ks_metrics": { "type": "object" }
+      }
+    }
+  }
+}

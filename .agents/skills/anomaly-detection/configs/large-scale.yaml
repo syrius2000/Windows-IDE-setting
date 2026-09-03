@@ -1,0 +1,11 @@
+extends: default.yaml
+iforest:
+  n_estimators: 500
+  contamination: 0.01
+  max_samples: 10000
+lof:
+  enabled: false
+batch:
+  chunksize: 100000
+output:
+  top_k: 5000

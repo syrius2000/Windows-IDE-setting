@@ -1,0 +1,44 @@
+name: edc-rwd-anomaly-detection
+version: 0.1.0
+summary: EDC/RWD data anomaly and outlier detection skill for RBQM and central monitoring.
+entrypoint: anomaly_detection.pipeline:run_detection
+language: python
+python_package: anomaly_detection
+intended_users:
+  - clinical data scientist
+  - biostatistician
+  - data manager
+  - central monitor
+scope:
+  included:
+    - EDC CSV export validation
+    - EDC audit trail feature review
+    - missingness and duplication checks
+    - temporal inconsistency checks
+    - robust statistics outlier scoring
+    - Isolation Forest and LOF ensemble scoring
+    - LLM-assisted review note generation
+  excluded:
+    - automated medical judgment
+    - automatic query issuance without human approval
+    - replacement for validated EDC edit checks
+regulatory_notes:
+  - ICH E6(R3) risk-proportionate quality management alignment
+  - FDA risk-based monitoring alignment
+  - EMA RWD data quality framework alignment
+  - 21 CFR Part 11 auditability consideration
+inputs:
+  - csv
+  - json
+  - jsonl
+outputs:
+  - jsonl
+  - csv
+  - markdown
+prompts:
+  system: docs/prompts/system_prompt.md
+  developer: docs/prompts/developer_prompt.md
+  user_template: docs/prompts/user_prompt_template.md
+schemas:
+  input: docs/schemas/input.schema.json
+  output: docs/schemas/output.schema.json

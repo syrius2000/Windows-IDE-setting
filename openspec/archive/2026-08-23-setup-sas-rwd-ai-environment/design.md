@@ -7,6 +7,7 @@
 ## Goals / Non-Goals
 
 **Goals:**
+
 - **リポジトリ分離とCopier自動生成**: 共通基盤リポジトリ（`scripts/`, `templates/`, `schemas/`, `profiles/`）から、テーマごとの独立したCase Projectリポジトリを1コマンドで安全に生成する。
 - **厳格なセキュリティ境界と開示統制**: 実データおよび認証情報はProject外に物理隔離し、`outputs/private/` のGit除外、`outputs/release/` の `release-manifest.yml` による人手承認を徹底する。
 - **文字コードとタスクの完全分離**: SAS CP932コードとPython/R/TS UTF-8コードをディレクトリ単位で分離し、Cursorタスク（`invoke-sas.ps1`）でバッチ実行とログ解析を自動化する。
@@ -17,6 +18,7 @@
 - **決定論的検査と自動テスト証跡**: `tests/test_all_scenarios.py` による全シナリオの網羅的自動テスト。
 
 **Non-Goals:**
+
 - 疾患固有（泌尿器科、ポンペ病等）の変数定義や医学的判断を共通テンプレートにハードコードすること（Case Project側に委ねる）。
 - 認証情報や実RWD、非匿名化PDFのGitリポジトリ内への保存（DSNや `.env` 含む）。
 - ODBCをPython/Rの標準・必須接続方式として強制すること。
@@ -130,14 +132,14 @@ sequenceDiagram
 
 ### 4. セキュリティ境界と機微データ管理
 
-| 区分 | 保存場所 | Git追跡 | AI利用方針 (Cursor / ローカルLLM) |
-| :--- | :--- | :--- | :--- |
-| **実RWD / 生データ** | Project外部保護領域 (`C:\RWD_SECURE\...` 等) | **完全不可** (物理的分離) | クラウドAI入力**禁止** (ローカルLLM/オフラインのみ) |
-| **機微中間集計 / ログ** | `outputs/private/` | **完全不可** (`.gitignore`) | クラウドAI入力**禁止** |
-| **公開・報告用成果物** | `outputs/release/` | **条件付き許可** (`release-manifest.yml` 必須) | 集約・非識別化済み要約のみ利用可 |
-| **合成データ** | `data/synthetic/` | **許可** | CursorクラウドAI利用**可** (テスト・コード生成) |
-| **DBパスワード** | macOS Keychain (`keyring`) / CLI対話入力 | **完全不可** (DSN/ファイル保存禁止) | AIチャットプロンプトへの入力**禁止** |
-| **非機微接続設定** | `config/local.paths.yml` | **完全不可** (`.gitignore`) | 利用可 |
+| 区分                    | 保存場所                                     | Git追跡                                        | AI利用方針 (Cursor / ローカルLLM)                   |
+| :---------------------- | :------------------------------------------- | :--------------------------------------------- | :-------------------------------------------------- |
+| **実RWD / 生データ**    | Project外部保護領域 (`C:\RWD_SECURE\...` 等) | **完全不可** (物理的分離)                      | クラウドAI入力**禁止** (ローカルLLM/オフラインのみ) |
+| **機微中間集計 / ログ** | `outputs/private/`                           | **完全不可** (`.gitignore`)                    | クラウドAI入力**禁止**                              |
+| **公開・報告用成果物**  | `outputs/release/`                           | **条件付き許可** (`release-manifest.yml` 必須) | 集約・非識別化済み要約のみ利用可                    |
+| **合成データ**          | `data/synthetic/`                            | **許可**                                       | CursorクラウドAI利用**可** (テスト・コード生成)     |
+| **DBパスワード**        | macOS Keychain (`keyring`) / CLI対話入力     | **完全不可** (DSN/ファイル保存禁止)            | AIチャットプロンプトへの入力**禁止**                |
+| **非機微接続設定**      | `config/local.paths.yml`                     | **完全不可** (`.gitignore`)                    | 利用可                                              |
 
 ### 5. Windows/Mac クロスプラットフォーム共通契約
 
@@ -154,11 +156,11 @@ sequenceDiagram
 
 ## Risks / Trade-offs
 
-- **[Risk] ODBCドライバのARM64/x86_64アーキテクチャ不一致によるクラッシュ**  
-  → *Mitigation*: `scripts/macos/test-odbc.py` および診断にて、システムのCPUアーキテクチャとドライババイナリの一致を事前に検証。
-- **[Risk] DSN設定ファイル（`odbc.ini`）へのパスワード誤記録**  
-  → *Mitigation*: ドキュメントおよび検査スクリプトでDSNへのパスワード記載を禁止し、Keychainまたは都度入力を強制。
-- **[Risk] SAS CP932コードがCursorやGitで意図せずUTF-8変換される**  
-  → *Mitigation*: `src/sas-cp932/` ディレクトリで物理分離し、`.vscode/settings.json` の `files.associations` / `files.encoding` でCP932を強制。`validate-project.py` で再帰的エンコーディング検査。
-- **[Risk] 初心者による実データ（.sas7bdat / CSV）の誤コミット**  
-  → *Mitigation*: 厳格な `.gitignore`、Gitleaksスキャン、pre-commitフック、および `validate-project.py` による二重三重の自動検出。
+- **[Risk] ODBCドライバのARM64/x86_64アーキテクチャ不一致によるクラッシュ**
+  → _Mitigation_: `scripts/macos/test-odbc.py` および診断にて、システムのCPUアーキテクチャとドライババイナリの一致を事前に検証。
+- **[Risk] DSN設定ファイル（`odbc.ini`）へのパスワード誤記録**
+  → _Mitigation_: ドキュメントおよび検査スクリプトでDSNへのパスワード記載を禁止し、Keychainまたは都度入力を強制。
+- **[Risk] SAS CP932コードがCursorやGitで意図せずUTF-8変換される**
+  → _Mitigation_: `src/sas-cp932/` ディレクトリで物理分離し、`.vscode/settings.json` の `files.associations` / `files.encoding` でCP932を強制。`validate-project.py` で再帰的エンコーディング検査。
+- **[Risk] 初心者による実データ（.sas7bdat / CSV）の誤コミット**
+  → _Mitigation_: 厳格な `.gitignore`、Gitleaksスキャン、pre-commitフック、および `validate-project.py` による二重三重の自動検出。

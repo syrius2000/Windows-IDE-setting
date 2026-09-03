@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EDC/RWD Anomaly Detection Input",
+  "type": "object",
+  "required": [
+    "study_id",
+    "records"
+  ],
+  "properties": {
+    "study_id": {
+      "type": "string"
+    },
+    "batch_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "batch",
+        "stream"
+      ]
+    },
+    "return_explanations": {
+      "type": "boolean"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "record_id",
+          "values"
+        ],
+        "properties": {
+          "record_id": {
+            "type": "string"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

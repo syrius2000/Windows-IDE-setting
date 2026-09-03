@@ -1,0 +1,8 @@
+{
+  "title": "EDC/RWD Anomaly Detection",
+  "panels": [
+    {"type": "timeseries", "title": "Anomaly Rate"},
+    {"type": "timeseries", "title": "API Latency p95"},
+    {"type": "table", "title": "Top Review Queue"}
+  ]
+}

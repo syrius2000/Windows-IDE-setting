@@ -1,0 +1,10 @@
+diff --git a/Repos/.agent/anomaly-detection/README.md b/Repos/.agent/anomaly-detection/README.md
+new file mode 100644
+--- /dev/null
++++ b/Repos/.agent/anomaly-detection/README.md
+@@ -0,0 +1,5 @@
++# EDC/RWD Anomaly Detection Skill
++
++Initial scaffold for rule-based, statistical, and machine-learning anomaly detection.
++
++See docs/research_report_ja.md.

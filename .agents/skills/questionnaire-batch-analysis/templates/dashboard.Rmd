@@ -1,0 +1,268 @@
+---
+title: "アンケートバッチ分析ダッシュボード"
+output:
+  html_document:
+    theme: flatly
+    mathjax: "default"
+params:
+  output_dir: "./skill_out/questionnaire"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(ggplot2, knitr, jsonlite)
+
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+# フォント設定（日本語）
+detect_jp_font <- function() {
+  os <- Sys.info()[["sysname"]]
+  candidates <- switch(os,
+    "Darwin"  = c("Hiragino Sans", "HiraginoSans-W3", "Hiragino Kaku Gothic Pro"),
+    "Windows" = c("Yu Gothic", "Meiryo", "MS Gothic"),
+    "Linux"   = c("Noto Sans CJK JP", "IPAexGothic", "IPAGothic"),
+    character(0)
+  )
+  if (requireNamespace("systemfonts", quietly = TRUE)) {
+    avail <- unique(systemfonts::system_fonts()$family)
+    for (f in candidates) {
+      if (f %in% avail) return(f)
+    }
+  }
+  if (length(candidates) > 0L) return(candidates[1L])
+  ""
+}
+jp_font <- detect_jp_font()
+if (nzchar(jp_font)) {
+  ggplot2::theme_set(ggplot2::theme_minimal(base_size = 13, base_family = jp_font))
+}
+
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agent", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) {
+      break
+    }
+    d <- parent
+  }
+  getwd()
+}
+source(file.path(find_agent_repo(), ".agent", "shared", "run_scope.R"))
+
+rs <- resolve_pass3_run_dir(params$output_dir, "summary.csv")
+run_dir <- rs$run_dir
+run_meta <- rs$run_meta
+json_path <- find_questionnaire_json_under_run(run_dir)
+output_dir <- dirname(json_path)
+summ_path <- file.path(run_dir, "executive_summary.md")
+
+if (file.exists(json_path)) {
+  res <- jsonlite::fromJSON(json_path)
+  dataset_nm <- res$survey_id %||% "Survey"
+  q_label <- res$question_label %||% res$question_id
+  n_total <- res$n_used
+  cramers_v <- res$cramers_v
+  max_res <- res$max_abs_pearson_res
+  p_val <- res$p_value
+} else {
+  stop("questionnaire_results.json が見つかりません。Pass 1 を実行してください。")
+}
+
+if (file.exists(summ_path)) {
+  summary_text <- paste(readLines(summ_path, encoding = "UTF-8"), collapse = "\n")
+} else {
+  summary_text <- paste0(
+    "### AI エグゼクティブ・サマリー（未生成）\n\n",
+    "> **Pass 2 未実行**: `executive_summary.md` が見つかりません。\n>\n",
+    "> SKILL.md の指示に従い AI 考察を生成し保存してください。\n"
+  )
+}
+```
+
+```{css, echo=FALSE}
+body {
+  font-family: "Helvetica Neue", "Yu Gothic", "Meiryo", sans-serif;
+  font-size: 14px;
+  color: #333;
+  background: #f0f2f5;
+  margin: 0;
+  padding: 20px;
+}
+
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header-banner {
+  background: linear-gradient(135deg, #1a3a5c 0%, #2d6a9f 100%);
+  color: white;
+  padding: 24px 32px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.header-banner h2 {
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.header-banner .meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  flex: 1 1 180px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.stat-card .value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1a3a5c;
+}
+
+.stat-card .label {
+  font-size: 12px;
+  color: #666;
+  margin-top: 6px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1a3a5c;
+  border-left: 5px solid #2d6a9f;
+  padding-left: 12px;
+  margin: 8px 0 16px 0;
+}
+
+.ai-summary-box {
+  background: #fff;
+  border: 1px solid #d0dce8;
+  border-radius: 8px;
+  padding: 24px 32px;
+  line-height: 1.8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.ai-summary-box h3, .ai-summary-box h4 { color: #1a3a5c; margin-top: 24px; }
+
+.img-container {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  text-align: center;
+}
+```
+
+<div class="dashboard-container">
+
+```{r header-banner, results='asis'}
+run_line <- if (!is.null(run_meta) && !is.null(run_meta$run_id)) {
+  paste0('<span><b>run_id:</b> ', run_meta$run_id, '</span>',
+    '<span><b>run_output_dir:</b> ', run_meta$run_output_dir %||% run_dir, '</span>')
+} else {
+  paste0('<span><b>run_output_dir:</b> ', run_dir, '</span>')
+}
+cat(paste0(
+  '<div class="header-banner">',
+  '<h2>\U1F4CA アンケートバッチ分析ダッシュボード</h2>',
+  '<div class="meta-info">',
+  '<span>\U1F4C1 <b>調査ID:</b> ', dataset_nm, '</span>',
+  '<span>\U1F4CA <b>設問:</b> ', q_label, '</span>',
+  '<span>🔢 <b>有効回答数:</b> N = ', format(n_total, big.mark = ","), '</span>',
+  '<span>\u23f1 <b>作成:</b> ', format(Sys.time(), "%Y-%m-%d %H:%M", tz="Asia/Tokyo"), '</span>',
+  run_line,
+  '</div></div>'
+))
+```
+
+```{r stats-cards, results='asis'}
+cv_display <- if (!is.null(cramers_v) && length(cramers_v) && !is.na(cramers_v)) {
+  sprintf("%.4f", as.numeric(cramers_v))
+} else {
+  "N/A"
+}
+p_display <- if (!is.null(p_val) && !is.na(p_val)) {
+  if (p_val < 0.001) "< 0.001" else sprintf("%.4f", p_val)
+} else {
+  "N/A"
+}
+
+cat(paste0(
+  '<div class="stats-grid">',
+  '<div class="stat-card"><div class="value">', n_total, "</div>",
+  '<div class="label">\u6709\u52b9\u56de\u7b54\u6570</div></div>',
+  '<div class="stat-card"><div class="value">', sprintf("%.2f", max_res), "</div>",
+  '<div class="label">\u6700\u5927\u6b8b\u5dee\uff08\u7d76\u5bfe\u5024\uff09</div></div>',
+  '<div class="stat-card"><div class="value">', p_display, "</div>",
+  '<div class="label">P\u5024</div></div>',
+  '<div class="stat-card" style="border-color: #8e44ad;"><div class="value" style="color: #8e44ad;">', cv_display, "</div>",
+  '<div class="label">Cram&eacute;r\'s V\uff08\u52b9\u679c\u91cf\uff09</div></div>',
+  "</div>"
+))
+```
+
+<div class="section-title">&#129504; AI エグゼクティブ・サマリー（Pass 2 出力）</div>
+
+```{r ai-summary, results='asis'}
+cat('<div class="ai-summary-box">\n')
+cat(knitr::knit(text = summary_text, quiet = TRUE))
+cat("\n</div>\n")
+```
+
+<div class="section-title">&#128200; ピアソン残差プロット</div>
+
+<div class="img-container">
+<img src="figures/residual_plot.png" alt="residual plot" style="max-width:100%; border-radius:4px;">
+</div>
+
+<details class="glossary-box" style="background:#fff; padding:15px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.05); font-size:12px; margin-top:24px;">
+<summary style="font-weight:bold; color:#1a3a5c; cursor:pointer;">&#128218; 統計指標の用語解説</summary>
+<div style="margin-top:12px; color:#555;">
+
+<h4>■ ピアソン残差 (Pearson Residuals)</h4>
+<p>観測値と期待値のズレを標準化したものです。</p>
+<ul>
+<li>|r| &gt; 1.96: 5%水準で有意なズレ</li>
+<li>|r| &gt; 2.58: 1%水準で有意なズレ</li>
+</ul>
+
+<h4>■ Cramér's V（0〜1）</h4>
+<p>変数間の関連の「強さ」を示す効果量です。</p>
+<ul>
+<li>0.1未満: 弱い関連</li>
+<li>0.3前後: 中程度の関連</li>
+<li>0.5以上: 強い関連</li>
+</ul>
+
+</div>
+</details>
+
+</div> <!-- End dashboard-container -->

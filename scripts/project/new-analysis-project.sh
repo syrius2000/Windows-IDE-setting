@@ -16,9 +16,53 @@ PLATFORM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEMPLATE_DIR="$PLATFORM_ROOT/templates/analysis-project"
 
 if [[ -z "$NAME" ]]; then
-    echo "Usage: ./new-analysis-project.sh <project-name> [profile] [data-classification] [primary-lang] [sas-encoding] [destination-root]"
-    echo "Example: ./new-analysis-project.sh case-pompe-disease mac-rwd-expert sensitive python none"
-    exit 1
+    echo "========================================================"
+    echo "  新規 RWD 解析プロジェクト (Case Project) 作成ガイド (macOS)"
+    echo "========================================================"
+    echo ""
+    echo "【1】プロジェクト名を入力してください（小文字英数字・ハイフン）"
+    read -p "  プロジェクト名 [既定: urology]: " RAW_NAME
+    RAW_NAME="${RAW_NAME:-urology}"
+    
+    CLEAN_NAME=$(echo "$RAW_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]+/-/g')
+    if [[ ! "$CLEAN_NAME" =~ ^case- ]]; then
+        CLEAN_NAME="case-$CLEAN_NAME"
+    fi
+    NAME="$CLEAN_NAME"
+    echo "  -> 設定された名前: $NAME"
+    echo ""
+
+    echo "【2】主に使用する解析言語を選択してください"
+    echo "  1) Python (推奨・標準環境)"
+    echo "  2) R      (推奨・統計環境)"
+    echo "  3) SAS    (CP932文字コード・既存SAS資産併用)"
+    read -p "  選択 [1-3] (既定: 1): " LANG_CHOICE
+    case "$LANG_CHOICE" in
+        2) PRIMARY_LANG="r"; SAS_ENCODING="none" ;;
+        3) PRIMARY_LANG="sas"; SAS_ENCODING="cp932" ;;
+        *) PRIMARY_LANG="python"; SAS_ENCODING="none" ;;
+    esac
+    echo "  -> 解析言語: $PRIMARY_LANG"
+    echo ""
+
+    echo "【3】扱うデータのセキュリティ区分を選択してください"
+    echo "  1) deidentified (匿名化データ・標準)"
+    echo "  2) synthetic    (テスト用合成データ)"
+    echo "  3) sensitive    (高セキュリティ機微データ)"
+    read -p "  選択 [1-3] (既定: 1): " DATA_CHOICE
+    case "$DATA_CHOICE" in
+        2) DATA_CLASS="synthetic" ;;
+        3) DATA_CLASS="sensitive" ;;
+        *) DATA_CLASS="deidentified" ;;
+    esac
+    echo "  -> データ区分: $DATA_CLASS"
+    echo ""
+else
+    CLEAN_NAME=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]+/-/g')
+    if [[ ! "$CLEAN_NAME" =~ ^case- ]]; then
+        CLEAN_NAME="case-$CLEAN_NAME"
+    fi
+    NAME="$CLEAN_NAME"
 fi
 
 if [[ ! "$NAME" =~ ^case-[a-z0-9-]+$ ]]; then
@@ -92,11 +136,11 @@ mkdir -p "$TARGET_DIR/scripts"
 cp "$PLATFORM_ROOT/scripts/project/validate-project.py" "$TARGET_DIR/scripts/validate-project.py"
 chmod +x "$TARGET_DIR/scripts/validate-project.py"
 
-# Copy repository-managed skills; .agents/skills is the canonical source.
+# Copy repository-managed skills; .agents/skills is canonical.
 if [[ -d "$PLATFORM_ROOT/.agents/skills" ]]; then
     mkdir -p "$TARGET_DIR/.agents/skills"
     cp -R "$PLATFORM_ROOT/.agents/skills/." "$TARGET_DIR/.agents/skills/"
-    echo "[OK] Repository skills copied from .agents/skills."
+    echo "[OK] Repository skills automatically deployed to .agents/skills."
 else
     echo "[INFO] No repository-managed .agents/skills found; skipping skill copy."
 fi

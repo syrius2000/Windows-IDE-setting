@@ -28,7 +28,14 @@ set SETUP_EXIT_CODE=%errorLevel%
 
 echo.
 if %SETUP_EXIT_CODE% equ 0 (
-    echo [OK] Setup completed successfully. Press a key to exit.
+    echo [OK] Setup completed successfully.
+    echo.
+    echo --------------------------------------------------------------------------------
+    echo   [NEXT STEP] 新規の解析プロジェクト(Case Project)を作成するには
+    echo               ルートにある "Create-NewProject.bat" をダブルクリックしてください。
+    echo --------------------------------------------------------------------------------
+    echo.
+    echo Press a key to exit.
 ) else (
     echo [FAIL] Setup ended with error code: %SETUP_EXIT_CODE%
     echo       Check logs under .run\logs\

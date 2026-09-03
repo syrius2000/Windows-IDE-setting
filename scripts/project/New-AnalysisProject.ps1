@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     New-AnalysisProject.ps1 - Case Project Factory for Windows 11
 .DESCRIPTION
@@ -9,9 +9,8 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true, HelpMessage = "Case Project identifier (e.g., case-urology)")]
-    [ValidatePattern('^case-[a-z0-9-]+$')]
-    [string]$Name,
+    [Parameter(Mandatory = $false, HelpMessage = "Case Project identifier (e.g., case-urology)")]
+    [string]$Name = "",
 
     [Parameter(Mandatory = $false)]
     [ValidateSet("windows-standard", "mac-rwd-expert")]
@@ -41,6 +40,69 @@ $ErrorActionPreference = "Stop"
 
 # Ensure UTF-8 Console Output
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+# Interactive Prompt Wizard if $Name is not provided and not NonInteractive
+if ([string]::IsNullOrWhiteSpace($Name) -and -not $NonInteractive) {
+    Write-Host "========================================================" -ForegroundColor Cyan
+    Write-Host "  新規 RWD 解析プロジェクト (Case Project) 作成ガイド" -ForegroundColor Cyan
+    Write-Host "========================================================" -ForegroundColor Cyan
+    Write-Host ""
+
+    Write-Host "【1】プロジェクト名を入力してください（小文字英数字・ハイフン）" -ForegroundColor Yellow
+    Write-Host "     例: urology -> 自動的に 'case-urology' と命名されます" -ForegroundColor Gray
+    $rawName = Read-Host "  プロジェクト名 [既定: urology]"
+    if ([string]::IsNullOrWhiteSpace($rawName)) { $rawName = "urology" }
+    
+    # Auto-fix: convert to lowercase, replace invalid characters with hyphen, ensure case- prefix
+    $cleanName = $rawName.Trim().ToLower() -replace '[^a-z0-9-]', '-'
+    if (-not ($cleanName.StartsWith("case-"))) {
+        $cleanName = "case-$cleanName"
+    }
+    $Name = $cleanName
+    Write-Host "  -> 設定された名前: $Name" -ForegroundColor Green
+    Write-Host ""
+
+    Write-Host "【2】主に使用する解析言語を選択してください" -ForegroundColor Yellow
+    Write-Host "  1) Python  (推奨・標準データ解析環境)" -ForegroundColor White
+    Write-Host "  2) R       (推奨・統計解析環境)" -ForegroundColor White
+    Write-Host "  3) SAS     (CP932文字コード・既存SAS資産併用)" -ForegroundColor White
+    $langChoice = Read-Host "  選択 [1-3] (既定: 1)"
+    switch ($langChoice.Trim()) {
+        "2" { $PrimaryLanguage = "r"; $SasEncoding = "none" }
+        "3" { $PrimaryLanguage = "sas"; $SasEncoding = "cp932" }
+        default { $PrimaryLanguage = "python"; $SasEncoding = "none" }
+    }
+    Write-Host "  -> 解析言語: $PrimaryLanguage" -ForegroundColor Green
+    Write-Host ""
+
+    Write-Host "【3】扱うデータのセキュリティ区分を選択してください" -ForegroundColor Yellow
+    Write-Host "  1) deidentified (匿名化データ・標準)" -ForegroundColor White
+    Write-Host "  2) synthetic    (テスト用合成データ)" -ForegroundColor White
+    Write-Host "  3) sensitive    (高セキュリティ機微データ)" -ForegroundColor White
+    $dataChoice = Read-Host "  選択 [1-3] (既定: 1)"
+    switch ($dataChoice.Trim()) {
+        "2" { $DataClassification = "synthetic" }
+        "3" { $DataClassification = "sensitive" }
+        default { $DataClassification = "deidentified" }
+    }
+    Write-Host "  -> データ区分: $DataClassification" -ForegroundColor Green
+    Write-Host ""
+} else {
+    # If $Name was supplied without 'case-' prefix, auto-fix it
+    if (-not [string]::IsNullOrWhiteSpace($Name)) {
+        $cleanName = $Name.Trim().ToLower() -replace '[^a-z0-9-]', '-'
+        if (-not ($cleanName.StartsWith("case-"))) {
+            $cleanName = "case-$cleanName"
+        }
+        $Name = $cleanName
+    }
+}
+
+# Validate $Name format
+if ([string]::IsNullOrWhiteSpace($Name) -or $Name -notmatch '^case-[a-z0-9-]+$') {
+    Write-Error "[ERROR] Project Name must match pattern '^case-[a-z0-9-]+$' (e.g., case-urology). Provided: '$Name'"
+    exit 1
+}
 
 # Prefer $PSScriptRoot (reliable under powershell -File). Walk up until repo root.
 $ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
@@ -163,13 +225,14 @@ try {
     }
 
     # Copy repository-managed skills into the generated Case Project.
-    # .agents/skills is the canonical source; Cursor-specific adapters can be added later.
+    # .agents/skills is the canonical source recognized by Cursor & AI agents.
     $SourceAgentsSkills = Join-Path $PlatformRoot ".agents\skills"
     $TargetAgentsSkills = Join-Path $TargetDir ".agents\skills"
+
     if (Test-Path -LiteralPath $SourceAgentsSkills) {
         New-Item -ItemType Directory -Path $TargetAgentsSkills -Force | Out-Null
         Copy-Item -Path (Join-Path $SourceAgentsSkills "*") -Destination $TargetAgentsSkills -Recurse -Force
-        Write-Host "[✓] Repository skills copied from .agents\skills." -ForegroundColor Green
+        Write-Host "[✓] Repository skills automatically deployed to .agents\skills." -ForegroundColor Green
     } else {
         Write-Host "[INFO] No repository-managed .agents\skills found; skipping skill copy." -ForegroundColor Gray
     }

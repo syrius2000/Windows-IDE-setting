@@ -1,0 +1,9 @@
+extends: default.yaml
+iforest:
+  n_estimators: 150
+  contamination: 0.03
+lof:
+  n_neighbors: 15
+  contamination: 0.03
+output:
+  top_k: 200

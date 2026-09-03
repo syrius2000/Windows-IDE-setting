@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/vcd-bayesian-evidence-analysis/analysis_config.schema.json",
+  "title": "vcd-bayesian-evidence-analysis analysis_config.json",
+  "description": "Pass 0 produces this flat JSON config for Pass 1 analysis.R.",
+  "type": "object",
+  "required": ["input", "vars", "freq", "output_dir", "run_id"],
+  "properties": {
+    "input": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UTF-8 CSV input path."
+    },
+    "vars": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Categorical variable columns to analyze."
+    },
+    "freq": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Frequency/count column."
+    },
+    "response_var": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional response/outcome variable. For 3+ dimensions, Cramer's V is computed on predictor-level combinations by response_var."
+    },
+    "output_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Pass 1 output root. analysis.R writes run_<prefix>/ below this directory."
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Run identifier before run_<first 16 chars> output isolation."
+    },
+    "dataset_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "top_k": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "threshold_k": {
+      "type": "number"
+    },
+    "large_n_threshold": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "ebic_gamma": {
+      "type": "number"
+    },
+    "ebic_p": {
+      "type": "number"
+    },
+    "level2_factor": {
+      "type": "number"
+    },
+    "level3_factor": {
+      "type": "number"
+    },
+    "arm_top_rules": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "arm_min_support": {
+      "type": "number"
+    },
+    "arm_min_confidence": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": true
+}

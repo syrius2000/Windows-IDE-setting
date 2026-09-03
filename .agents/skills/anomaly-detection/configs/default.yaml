@@ -1,0 +1,78 @@
+skill_name: edc-rwd-anomaly-detection
+schema_version: "1.0"
+mode: batch
+random_state: 42
+required_columns:
+  - record_id
+  - study_id
+  - site_id
+  - subject_id
+  - form_name
+entity_keys:
+  - study_id
+  - site_id
+  - subject_id
+  - visit_date
+  - form_name
+timestamp_columns:
+  - visit_date
+  - recorded_at
+value_columns:
+  numeric:
+    - age
+    - sbp
+    - dbp
+    - lab_value
+  categorical:
+    - site_id
+    - form_name
+    - status
+rules:
+  required_missing_weight: 1.00
+  duplicate_weight: 0.85
+  temporal_inconsistency_weight: 0.90
+  negative_age_weight: 1.00
+  physiologic_range_weight: 0.70
+  unresolved_query_weight: 0.40
+robust_stats:
+  enabled: true
+  mad_z_threshold: 4.5
+iforest:
+  enabled: true
+  n_estimators: 300
+  contamination: 0.02
+  max_samples: auto
+lof:
+  enabled: true
+  n_neighbors: 20
+  contamination: 0.02
+mcd:
+  enabled: true
+  support_fraction: null
+stl:
+  enabled: false
+  time_col: "visit_date"
+  value_col: "val1"
+  period: 7
+psi:
+  enabled: true
+  group_col: "cohort_group"
+  baseline_group: "baseline"
+  current_group: "current"
+  n_bins: 10
+score_fusion:
+  rule_weight: 0.30
+  robust_weight: 0.10
+  iforest_weight: 0.20
+  lof_weight: 0.15
+  mcd_weight: 0.15
+  stl_weight: 0.10
+thresholds:
+  warning: 0.55
+  critical: 0.80
+output:
+  top_k: 1000
+  include_explanations: true
+privacy:
+  suppress_phi_in_logs: true
+  pseudonymize_subject_id: false
