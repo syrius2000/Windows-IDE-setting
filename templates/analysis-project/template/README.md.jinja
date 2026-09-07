@@ -64,3 +64,31 @@ uv run python scripts/validate-project.py --project-dir .
 ```
 
 > ℹ️ **SASについて**: SASを保有していない場合、`src/sas-cp932/` や SAS実行タスクは使用せず、Python（`uv`）または R を用いてすべての解析・報告業務を進めることができます。
+
+## 🧭 OpenSpecで解析テーマを始める
+
+このCase Projectは、生成時にOpenSpecを初期化します。OpenSpecの初期化後、最初のテーマをCursorで相談し、承認した仕様に沿って解析を進めてください。
+
+1. Cursorでこのプロジェクトを開く
+2. OpenSpecへ最初のテーマを入力する
+3. `proposal`、`specs`、`design`、`tasks`を順番に確認する
+4. 内容を確認・承認してから実装を開始する
+5. まず`data/synthetic/`の合成データで検証する
+
+### OpenSpecの状態確認と再実行
+
+初期化結果は`AI_FRAMEWORK_STATUS.yml`に記録されます。
+
+```powershell
+Get-Content .\AI_FRAMEWORK_STATUS.yml
+```
+
+初期化が失敗またはスキップされた場合は、Node.js/npm/npxの状態を確認してから次のスクリプトを再実行してください。
+
+```powershell
+.\scripts\setup-openspec.ps1
+```
+
+再実行時に既存の`openspec/`がある場合は、先に`.ai-backup/<日時>/`へバックアップされます。`README.md`、解析コード、実データ、`outputs/private/`はOpenSpecの管理対象ではありません。
+
+> GitHubへのPushは自動実行されません。最初のGitコミット内容を確認してから、必要な場合だけGitHub連携を行ってください。

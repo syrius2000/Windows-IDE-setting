@@ -32,6 +32,9 @@ param(
     [string]$DestinationRoot = (Join-Path $env:USERPROFILE "Programing\RWD-Projects"),
 
     [Parameter(Mandatory = $false)]
+    [string]$DestinationPath,
+
+    [Parameter(Mandatory = $false)]
     [switch]$NonInteractive = $false
 )
 
@@ -135,6 +138,11 @@ Write-Host "  Primary Language:    $PrimaryLanguage (SAS Encoding: $SasEncoding)
 Write-Host "  Destination Root:    $DestinationRoot"
 Write-Host "  Platform Root:       $PlatformRoot"
 Write-Host "  Template Dir:        $TemplateDir"
+if ($DestinationPath) {
+    Write-Host "  Destination Path:    $DestinationPath"
+} else {
+    Write-Host "  Destination Root:    $DestinationRoot"
+}
 Write-Host "========================================================" -ForegroundColor Cyan
 
 # 1. Validation of Prerequisites
@@ -156,12 +164,38 @@ if (-not $CopierCmd) {
     }
 }
 
-# 2. Destination Directory Checks & Conflict Prevention
+# 2. Destination Directory Resolution & Conflict Prevention
+if ($NonInteractive -and (-not $DestinationPath) -and (-not $PSBoundParameters.ContainsKey("DestinationRoot"))) {
+    throw "-NonInteractive requires -DestinationPath or an explicit -DestinationRoot."
+}
+
+if (-not $DestinationPath -and (-not $PSBoundParameters.ContainsKey("DestinationRoot")) -and (-not $NonInteractive)) {
+    $enteredRoot = Read-Host "保存先ルートを入力してください（Enterで $DestinationRoot）"
+    if ($enteredRoot -and $enteredRoot.Trim()) {
+        $DestinationRoot = $enteredRoot.Trim()
+    }
+}
+
+if ($DestinationPath) {
+    $TargetDir = [System.IO.Path]::GetFullPath($DestinationPath)
+    $TargetLeaf = Split-Path -Leaf $TargetDir
+    if ($TargetLeaf -ne $Name) {
+        throw "-DestinationPath の末尾 '$TargetLeaf' が -Name '$Name' と一致しません。"
+    }
+    if ($PSBoundParameters.ContainsKey("DestinationRoot")) {
+        $ExpectedPath = [System.IO.Path]::GetFullPath((Join-Path $DestinationRoot $Name))
+        if ($ExpectedPath.TrimEnd('\') -ne $TargetDir.TrimEnd('\')) {
+            throw "-DestinationPath と -DestinationRoot/-Name の指定が矛盾しています。"
+        }
+    }
+    $DestinationRoot = Split-Path -Parent $TargetDir
+} else {
+    $TargetDir = [System.IO.Path]::GetFullPath((Join-Path $DestinationRoot $Name))
+}
+
 if (-not (Test-Path $DestinationRoot)) {
     New-Item -ItemType Directory -Path $DestinationRoot -Force | Out-Null
 }
-
-$TargetDir = Join-Path $DestinationRoot $Name
 if (Test-Path $TargetDir) {
     $existingFiles = @(Get-ChildItem -Path $TargetDir -Force -ErrorAction SilentlyContinue)
     if ($existingFiles.Count -gt 0) {
@@ -236,6 +270,19 @@ try {
     } else {
         Write-Host "[INFO] No repository-managed .agents\skills found; skipping skill copy." -ForegroundColor Gray
     }
+    $OpenSpecSetupSource = Join-Path $ScriptDir "setup-openspec.ps1"
+    $OpenSpecSetupTarget = Join-Path $ProjectScriptsDir "setup-openspec.ps1"
+    $OpenSpecConfigSource = Join-Path $PlatformRoot "config\ai-framework-versions.json"
+    $OpenSpecConfigTargetDir = Join-Path $TargetDir "config"
+    if (-not (Test-Path $OpenSpecSetupSource)) {
+        throw "OpenSpec setup script not found at: $OpenSpecSetupSource"
+    }
+    if (-not (Test-Path $OpenSpecConfigSource)) {
+        throw "OpenSpec version configuration not found at: $OpenSpecConfigSource"
+    }
+    New-Item -ItemType Directory -Path $OpenSpecConfigTargetDir -Force | Out-Null
+    Copy-Item -Path $OpenSpecSetupSource -Destination $OpenSpecSetupTarget -Force
+    Copy-Item -Path $OpenSpecConfigSource -Destination (Join-Path $OpenSpecConfigTargetDir "ai-framework-versions.json") -Force
 
     # 5. Integrity & Governance Validation (via uv run python or fallback)
     Write-Host "[2/6] Validating Project Schema & Directory Governance..." -ForegroundColor Green
@@ -268,20 +315,44 @@ try {
     Write-Host "`n[3/6] Project Generated Successfully:" -ForegroundColor Green
     Write-Host "  - Root: $TargetDir"
     Write-Host "  - Structure: src/, sql/, reports/, outputs/private/, outputs/release/"
-    Write-Host "  - Governance: PROJECT.yml, .cursor/rules/, .agents/skills/, .pre-commit-config.yaml, .gitignore, tasks.json"
+ Write-Host "  - Governance: PROJECT.yml, .cursor/rules/, .agents/skills/, .pre-commit-config.yaml, .gitignore, tasks.json"
+    Write-Host "  - OpenSpec: npx project-scoped initialization before Git"
 
-    # 7. User Confirmation for Git Initialization
+    # 7. User Confirmation for OpenSpec and Git Initialization
+    $RunOpenSpec = $true
     $ProceedWithGit = $true
     if (-not $NonInteractive) {
-        $Response = Read-Host "`nDo you want to initialize Git and open in Cursor? (Y/n)"
+        $OpenSpecResponse = Read-Host "`nOpenSpecを初期化しますか？ (Y/n)"
+        if ($OpenSpecResponse -and $OpenSpecResponse.Trim().ToLower() -eq 'n') {
+            $RunOpenSpec = $false
+        }
+        $Response = Read-Host "Gitを初期化してCursorで開きますか？ (Y/n)"
         if ($Response -and $Response.Trim().ToLower() -eq 'n') {
             $ProceedWithGit = $false
         }
     }
 
+    # 8. OpenSpec Initialization (failure is recorded and does not delete the project)
+    Write-Host "`n[4/7] Initializing OpenSpec..." -ForegroundColor Green
+    $OpenSpecArgs = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $OpenSpecSetupTarget,
+        "-ProjectRoot", $TargetDir,
+        "-NonInteractive"
+    )
+    if (-not $RunOpenSpec) {
+        $OpenSpecArgs += "-Skip"
+    }
+    & powershell.exe @OpenSpecArgs
+    $OpenSpecExitCode = $LASTEXITCODE
+    if ($OpenSpecExitCode -ne 0) {
+        Write-Host "[WARN] OpenSpec initialization did not complete. The project is retained; see AI_FRAMEWORK_STATUS.yml." -ForegroundColor Yellow
+    }
+
     if ($ProceedWithGit) {
-        # 8. Git Initialization & Targeted Staging
-        Write-Host "`n[4/6] Initializing local Git repository..." -ForegroundColor Green
+        # 9. Git Initialization & Targeted Staging
+        Write-Host "`n[5/7] Initializing local Git repository..." -ForegroundColor Green
         Push-Location $TargetDir
         try {
             & git init | Out-Null
@@ -296,9 +367,16 @@ try {
                 Write-Host "            git config --global user.email 'you@example.com'"
                 Write-Host "       Skipping automatic initial commit." -ForegroundColor Yellow
             } else {
-                & git add .gitignore .pre-commit-config.yaml .cursor .agents .vscode config data reports schemas sql src pyproject.toml package.json PROJECT.yml README.md AGENTS.md scripts | Out-Null
+                $StagePaths = @(
+                    ".gitignore", ".pre-commit-config.yaml", ".cursor", ".agents", ".vscode", "config", "data", "reports", "schemas", "sql", "src",
+                    "pyproject.toml", "package.json", "PROJECT.yml", "README.md", "AGENTS.md", "AI_FRAMEWORK_STATUS.yml", "scripts"
+                )
+                if (Test-Path "openspec") {
+                    $StagePaths += "openspec"
+                }
+                & git add @StagePaths | Out-Null
                 & git commit -m "feat: initialize case project from template ($Name)" | Out-Null
-                Write-Host "[5/6] Initial Git commit created." -ForegroundColor Green
+                Write-Host "[6/7] Initial Git commit created." -ForegroundColor Green
 
                 $PreCommitCmd = Get-Command "pre-commit" -ErrorAction SilentlyContinue
                 if ($PreCommitCmd -and (Test-Path -LiteralPath ".pre-commit-config.yaml")) {

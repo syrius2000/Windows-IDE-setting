@@ -2,7 +2,7 @@
 .SYNOPSIS
     03-install-reporting.ps1 - Install Reporting & Slidev/PPTX Stack
 .DESCRIPTION
-    Installs Node.js LTS and pnpm, and configures global/project tooling for Slidev and PptxGenJS.
+    Installs Node.js LTS, verifies npm/npx, and configures pnpm/project tooling.
 #>
 
 Set-StrictMode -Version Latest
@@ -47,7 +47,19 @@ if ($nodeAvailable) {
     $FailedTools += "Node.js"
 }
 
-# 2. Enable pnpm via Corepack or npm
+# 2. Verify npm and npx supplied by Node.js (OpenSpec uses project-scoped npx)
+foreach ($commandName in @("npm", "npx")) {
+    $command = Get-Command $commandName -ErrorAction SilentlyContinue
+    if ($command) {
+        $version = (& $commandName --version) 2>$null
+        Log-Message "  [✓] $commandName`: operational ($version)" "Green"
+    } else {
+        Log-Message "  [✗] $commandName`: unavailable after Node.js installation." "Red"
+        $FailedTools += $commandName
+    }
+}
+
+# 3. Enable pnpm via Corepack or npm
 $pnpmCmd = Get-Command "pnpm" -ErrorAction SilentlyContinue
 if (-not $pnpmCmd) {
     Log-Message "  [...] Enabling pnpm via corepack..." "Yellow"

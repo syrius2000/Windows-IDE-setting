@@ -2,7 +2,7 @@
 .SYNOPSIS
     05-verify.ps1 - End-to-End Environment & Pipeline Verification
 .DESCRIPTION
-    Verifies that Git, uv, Python, R, Node.js, pnpm, TypeScript, Quarto, DuckDB, SAS CP932 handling,
+    Verifies that Git, uv, Python, R, Node.js, npm, npx, pnpm, Quarto, DuckDB, SAS CP932 handling,
     and PowerPoint reporting are operational through automated synthetic execution.
     NOTE: Do not name parameters $args (PowerShell automatic variable) — that drops
     "--version" and can launch interactive CLIs (e.g. duckdb) which hang the setup.
@@ -172,6 +172,8 @@ Assert-Tool -Id "node" -Name "Node.js" -Command "node" -VersionArgs @("--version
 Assert-Tool -Id "pnpm" -Name "pnpm" -Command "pnpm" -VersionArgs @("--version")
 Assert-Tool -Id "tsc" -Name "TypeScript Compiler" -Command "tsc" -VersionArgs @("--version")
 Assert-Tool -Id "ts-node" -Name "ts-node" -Command "ts-node" -VersionArgs @("--version")
+Assert-Tool -Id "npm" -Name "npm" -Command "npm" -VersionArgs @("--version")
+Assert-Tool -Id "npx" -Name "npx" -Command "npx" -VersionArgs @("--version")
 
 # 2. Copier Check
 $copierCmd = Get-Command "copier" -ErrorAction SilentlyContinue
@@ -234,7 +236,7 @@ try {
         -Name $TestProjectName `
         -Profile "windows-standard" `
         -DataClassification "synthetic" `
-        -DestinationRoot $TempDir `
+        -DestinationPath $TestProjectPath `
         -NonInteractive
 
     if (Test-Path (Join-Path $TestProjectPath "PROJECT.yml")) {
