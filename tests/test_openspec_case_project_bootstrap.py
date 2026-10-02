@@ -19,14 +19,15 @@ def test_openspec_version_is_pinned_and_project_scoped():
     assert "npx --yes" in setup_script
     assert "@latest" not in setup_script
     assert "AI_FRAMEWORK_STATUS.yml" in setup_script
+    assert '& npx --yes "$Package@$Version" init --tools cursor --language ja' in setup_script
 
 
 def test_windows_reporting_stack_verifies_npm_and_npx():
     install_script = read_utf8("scripts/windows/03-install-reporting.ps1")
     verify_script = read_utf8("scripts/windows/05-verify.ps1")
     assert 'foreach ($commandName in @("npm", "npx"))' in install_script
-    assert 'Assert-Tool "npm" "npm" "npm" "--version"' in verify_script
-    assert 'Assert-Tool "npx" "npx" "npx" "--version"' in verify_script
+    assert 'Assert-Tool -Id "npm" -Name "npm" -Command "npm" -VersionArgs @("--version")' in verify_script
+    assert 'Assert-Tool -Id "npx" -Name "npx" -Command "npx" -VersionArgs @("--version")' in verify_script
 
 
 def test_project_factory_has_destination_and_openspec_flow():

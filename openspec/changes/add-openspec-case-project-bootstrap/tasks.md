@@ -1,15 +1,15 @@
 # Case ProjectへのOpenSpec自動初期化実装タスク
 
 created: 2026-08-24 21:22 (JST)
-update: 2026-08-24 21:22 (JST)
-author: Codex (GPT-5)
+update: 2026-10-03 06:06 (JST)
+author: Codex (GPT-6)
 
 ## 1. Windows前提ツールとバージョン設定
 
 - [x] 1.1 Node.js LTS、npm、npxの検証項目をWindows報告・導入スクリプトへ追加し、`node --version`、`npm --version`、`npx --version`が診断結果に記録されることを確認する
 - [x] 1.2 OpenSpec CLIの検証済みバージョンをリポジトリ内の設定ファイルへ追加し、JSON/YAML形式と必須キーを機械検証するテストを追加する
 - [x] 1.3 Node.js、npm、npxのいずれかが利用不能な場合に、OpenSpec初期化を実行せず、再実行手順を含む診断結果を出力する処理を実装し、未導入状態のテストを通す
-- [x] 1.4 OpenSpec CLIをグローバルインストールせず、設定済みバージョンを`npx --yes`で実行するコマンド組み立てを実装し、実行コマンドに`@latest`が含まれないことをテストする
+- [x] 1.4 OpenSpec CLIをグローバルインストールせず、設定済みバージョンを`npx --yes`で実行し、`--tools cursor --language ja`を指定するコマンド組み立てを実装する
 
 ## 2. 保存先解決と入力検証
 

@@ -1,8 +1,8 @@
 # Case ProjectへのOpenSpec自動初期化設計
 
 created: 2026-08-24 21:19 (JST)
-update: 2026-08-24 21:19 (JST)
-author: Codex (GPT-5)
+update: 2026-10-03 06:06 (JST)
+author: Codex (GPT-6)
 
 ## Context
 
@@ -46,10 +46,10 @@ Windows環境セットアップはNode.js/npm/npxの導入と稼働確認まで�
 リポジトリ内にOpenSpec CLIの検証済みバージョンを記載する設定ファイルを置く。Case Project Factoryはこの値を読み取り、次の形式でプロジェクトルートからOpenSpec初期化を実行する。
 
 ```text
-npx --yes @fission-ai/openspec@<検証済みバージョン> init
+npx --yes @fission-ai/openspec@<検証済みバージョン> init --tools cursor --language ja
 ```
 
-実際のバージョン値は実装時に公式配布物の動作確認と既存テストを通じて確定し、設定値を変更する場合は別の差分レビュー対象とする。
+`--tools cursor`でCursor統合だけを設定し、`--language ja`で生成Artifactの日本語を既定にする。実際のバージョン値は実装時に公式配布物の動作確認と既存テストを通じて確定し、設定値を変更する場合は別の差分レビュー対象とする。
 
 **理由**：グローバル環境を汚さず、実行バージョンを再現可能にし、初学者がnpm installの詳細を判断しなくてよい。
 
@@ -106,7 +106,7 @@ openspec:
   cli_package: "@fission-ai/openspec"
   cli_version: "検証済みバージョン"
   initialized_at: "YYYY-MM-DDTHH:MM:SS+09:00"
-  command: "npx --yes ... init"
+  command: "npx --yes ... init --tools cursor --language ja"
   message: ""
   retry_command: ".\\scripts\\setup-openspec.ps1"
 ```

@@ -37,12 +37,17 @@
 
 ### Requirement: Case ProjectへのOpenSpec初期化
 
-システムは、Windows 11で生成したCase Projectのルートに、検証済みバージョンのOpenSpec CLIをプロジェクト単位で実行して`openspec/`を初期化し、利用者が最初のテーマ入力後にChange Artifactを作成できる状態を提供しなければならない（SHALL）。
+システムは、Windows 11で生成したCase Projectのルートに、検証済みバージョンのOpenSpec CLIをプロジェクト単位で実行して`openspec/`を初期化し、Cursor統合のみを設定し、日本語をArtifactの既定言語としなければならない（SHALL）。利用者が最初のテーマ入力後にChange Artifactを作成できる状態を提供する。
 
 #### Scenario: OpenSpecの正常初期化
 
 - **WHEN** プロジェクト生成、`PROJECT.yml`検証、プレビュー、利用者確認が完了し、Node.js/npm/npxが利用可能な時
 - **THEN** システムはプロジェクトルートへ`openspec/`を初期化し、proposal等のChange Artifactを自動生成せず、次の利用手順を表示する
+
+#### Scenario: Cursor専用・日本語での非対話初期化
+
+- **WHEN** システムが検証済みOpenSpec CLIを実行する時
+- **THEN** システムはCursor統合だけを選択し、Artifactの既定言語を日本語に設定して、AIツール選択の対話入力を要求しない
 
 #### Scenario: OpenSpec初期化のネットワーク失敗
 

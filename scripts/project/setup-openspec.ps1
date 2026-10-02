@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Initializes or retries the pinned OpenSpec CLI for a generated Case Project.
 #>
@@ -44,7 +44,7 @@ function Write-FrameworkStatus(
         "  cli_package: $(Quote-Yaml $Package)"
         "  cli_version: $(Quote-Yaml $Version)"
         "  initialized_at: $(Quote-Yaml $timestamp)"
-        "  command: $(Quote-Yaml ('npx --yes ' + $Package + '@' + $Version + ' init'))"
+        "  command: $(Quote-Yaml ('npx --yes ' + $Package + '@' + $Version + ' init --tools cursor --language ja'))"
         "  message: $(Quote-Yaml $Message)"
         "  retry_command: $(Quote-Yaml $RetryCommand)"
     ) | Set-Content -Path $StatusPath -Encoding utf8
@@ -107,7 +107,7 @@ try {
     }
 
     Write-Host "[INFO] Initializing OpenSpec $Version in $ProjectRoot" -ForegroundColor Cyan
-    & npx --yes "$Package@$Version" init
+    & npx --yes "$Package@$Version" init --tools cursor --language ja
     $exitCode = $LASTEXITCODE
     if ($exitCode -ne 0) {
         $message = "OpenSpec initialization failed with exit code $exitCode."
