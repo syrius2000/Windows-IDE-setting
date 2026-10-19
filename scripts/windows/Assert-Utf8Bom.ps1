@@ -23,6 +23,7 @@ foreach ($path in $Targets) {
         continue
     }
     $bytes = [System.IO.File]::ReadAllBytes($path)
+    $rel = $path.Substring($Root.Length).TrimStart('\\', '/')
     $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
     try {
         $null = $utf8.GetString($bytes)
@@ -32,8 +33,7 @@ foreach ($path in $Targets) {
         continue
     }
     $hasBom = ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
-    $rel = $path.Substring($Root.Length).TrimStart('\', '/')
-    $requiresBom = ($path -ne (Join-Path $Root "scripts\\project\\New-AnalysisProject.ps1"))
+    $requiresBom = ($path -ne (Join-Path $Root "scripts\project\New-AnalysisProject.ps1"))
     if (-not $requiresBom -or $hasBom) {
         Write-Host "[OK] $rel (valid UTF-8$(if ($hasBom) { ', BOM' } else { ', no BOM' }))"
     } else {
