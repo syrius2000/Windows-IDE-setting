@@ -1,9 +1,10 @@
 ﻿<#
 .SYNOPSIS
-    Assert-Utf8Bom.ps1 - Fail if Windows setup scripts lack UTF-8 BOM
+    Assert-Utf8Bom.ps1 - Validate UTF-8 text and legacy Windows PowerShell BOM requirements
 .DESCRIPTION
     Windows PowerShell 5.1 mis-parses UTF-8 without BOM as system ANSI (CP932 on ja-JP).
-    Run this before commit/push when editing scripts on macOS.
+    Require BOM for legacy Windows setup entrypoints; allow BOM-less UTF-8 for modern PowerShell project scripts.
+    Validate all targets using strict UTF-8 decoding.
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -22,12 +23,21 @@ foreach ($path in $Targets) {
         continue
     }
     $bytes = [System.IO.File]::ReadAllBytes($path)
+    $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
+    try {
+        $null = $utf8.GetString($bytes)
+    } catch [System.Text.DecoderFallbackException] {
+        Write-Host "[FAIL] $rel (invalid UTF-8)" -ForegroundColor Red
+        $Failed += $rel
+        continue
+    }
     $hasBom = ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
     $rel = $path.Substring($Root.Length).TrimStart('\', '/')
-    if ($hasBom) {
-        Write-Host "[OK] $rel"
+    $requiresBom = ($path -ne (Join-Path $Root "scripts\\project\\New-AnalysisProject.ps1"))
+    if (-not $requiresBom -or $hasBom) {
+        Write-Host "[OK] $rel (valid UTF-8$(if ($hasBom) { ', BOM' } else { ', no BOM' }))"
     } else {
-        Write-Host "[FAIL] $rel (UTF-8 BOM required)" -ForegroundColor Red
+        Write-Host "[FAIL] $rel (UTF-8 BOM required for Windows PowerShell 5.1)" -ForegroundColor Red
         $Failed += $rel
     }
 }
