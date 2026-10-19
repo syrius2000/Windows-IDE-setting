@@ -16,7 +16,7 @@ jobs:
       - name: Validate UTF-8 and legacy Windows PowerShell BOM
         shell: pwsh
         run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\Assert-Utf8Bom.ps1
+          & .\scripts\windows\Assert-Utf8Bom.ps1
 
       - name: Parse all PowerShell scripts
         shell: pwsh
