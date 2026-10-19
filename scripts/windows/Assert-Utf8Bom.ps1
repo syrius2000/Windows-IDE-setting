@@ -23,7 +23,7 @@ foreach ($path in $Targets) {
         continue
     }
     $bytes = [System.IO.File]::ReadAllBytes($path)
-    $rel = $path.Substring($Root.Length).TrimStart('\\', '/')
+    $rel = $path.Substring($Root.Length).TrimStart('\', '/')
     $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
     try {
         $null = $utf8.GetString($bytes)
