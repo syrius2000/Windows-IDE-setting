@@ -221,6 +221,10 @@ def get_password_with_interactive_fallback(
             password = keyring.get_password(service, username)
         except ImportError:
             pass
+        except Exception as e:
+            # e.g. keyring.errors.NoKeyringError on headless Linux (Debian/QNAP/CI):
+            # no usable Keychain backend. Fall through to the interactive prompt / WARN path.
+            print(f"[i] Keychain backend unavailable ({type(e).__name__}); skipping Keychain lookup.", file=sys.stderr)
 
     # 2. Interactive prompt fallback
     if not password and (prompt_interactive or sys.stdin.isatty()):

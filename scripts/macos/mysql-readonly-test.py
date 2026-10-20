@@ -118,11 +118,17 @@ def test_connection(
 ) -> None:
     try:
         import keyring
+        from keyring.errors import KeyringError
     except ImportError:
         print("[ERROR] 'keyring' package is not installed. Run: uv run --with keyring ...", file=sys.stderr)
         sys.exit(2)
 
-    password = keyring.get_password(service, user)
+    try:
+        password = keyring.get_password(service, user)
+    except KeyringError as e:
+        print(f"[ERROR] No usable Keychain backend in this environment ({type(e).__name__}).", file=sys.stderr)
+        print("        This script reads credentials from macOS Keychain. Run it on macOS, or configure a supported keyring backend.", file=sys.stderr)
+        sys.exit(2)
     if not password:
         print(f"[ERROR] No password found in Keychain for Service='{service}', User='{user}'.", file=sys.stderr)
         print(f"        Please run: python3 scripts/macos/configure-keychain.py set --username {user}", file=sys.stderr)
